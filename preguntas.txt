@@ -1,0 +1,4 @@
+- es la categoría "not in universe" un missing value?
+- como tratar missings con 49% de aparición
+- se puede tratar un missing como una categoría?
+- 
