@@ -69,7 +69,7 @@ def downsampling(data: pd.DataFrame, ratio: float = 0.7, type: str = "clusters")
     return df_downsampled
 
 
-def preprocessing(data: pd.DataFrame, imputation: str = "mean") -> pd.DataFrame:
+def preprocessing(data: pd.DataFrame, imputation: str = "mode") -> pd.DataFrame:
     """Preprocessing of the dataset. It drops the unknown column, the duplicates and the columns with more than 40% of missing values. impuation can be "mode" or "knn" """
 
     df = data.copy()
