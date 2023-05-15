@@ -4,6 +4,15 @@ from sklearn.cluster import KMeans
 
 
 def downsampling(data: pd.DataFrame, ratio: float = 0.7, type: str = "clusters") -> pd.DataFrame:
+    """Downsampling of the majority class in a dataset. The downsampling is done in clusters or randomly. 
+    data: pd.DataFrame
+        Dataset to downsample
+    ratio: float
+        Ratio of the majority class to downsample
+    type: str
+        Type of downsampling. It can be "clusters" or "random"
+    """
+
     df = data.copy()
     # downsample in clusters the majority class
     df_majority = df[df['income_50k'] == 0]
@@ -61,6 +70,8 @@ def downsampling(data: pd.DataFrame, ratio: float = 0.7, type: str = "clusters")
 
 
 def preprocessing(data: pd.DataFrame, imputation: str = "mean") -> pd.DataFrame:
+    """Preprocessing of the dataset. It drops the unknown column, the duplicates and the columns with more than 40% of missing values. impuation can be "mode" or "knn" """
+
     df = data.copy()
     df = df.drop('unknown', axis=1)  # Drop unknown column
     df = df.drop_duplicates()  # Drop duplicates
