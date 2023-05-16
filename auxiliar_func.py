@@ -4,7 +4,7 @@ from sklearn.cluster import KMeans
 
 
 def downsampling(data: pd.DataFrame, ratio: float = 0.7, type: str = "clusters") -> pd.DataFrame:
-    """Downsampling of the majority class in a dataset. The downsampling is done in clusters or randomly. 
+    """Downsampling of the majority class in a dataset. The downsampling is done in clusters or randomly.
     data: pd.DataFrame
         Dataset to downsample
     ratio: float
@@ -56,8 +56,8 @@ def downsampling(data: pd.DataFrame, ratio: float = 0.7, type: str = "clusters")
             frac=ratio, random_state=42)
 
         # Separate majority and minority classes
-        df_majority = df[df['income'] == '<=50K']
-        df_minority = df[df['income'] == '>50K']
+        df_majority = df[df['income_50k'] == 0]
+        df_minority = df[df['income_50k'] == 1]
 
         # Downsample majority class
         df_majority_downsampled = df_majority.sample(
@@ -69,13 +69,23 @@ def downsampling(data: pd.DataFrame, ratio: float = 0.7, type: str = "clusters")
     return df_downsampled
 
 
-def preprocessing(data: pd.DataFrame, imputation: str = "mode", remove_duplicates: bool = True) -> pd.DataFrame:
-    """Preprocessing of the dataset. It drops the unknown column, the duplicates and the columns with more than 40% of missing values. impuation can be "mode" or "knn" """
-
+def preprocessing(data: pd.DataFrame, imputation: str = "mode", remove_duplicates: bool = True, scaling: str = None) -> pd.DataFrame:
+    """Preprocessing of the dataset. It removes the unknown values, the columns with more than 40% of missing values,
+    imputes the missing values with the mode or the KNN algorithm, converts the categorical variables to numerical
+    and scales the numerical variables.
+    data: pd.DataFrame
+        Dataset to preprocess
+    imputation: str
+        Type of imputation. It can be "mode" or "knn"
+    remove_duplicates: bool
+        If True, it removes the duplicates
+    scaling: str
+        Type of scaling. It can be "minmax" or "standard" or None
+    """
     df = data.copy()
-    df = df.drop('unknown', axis=1)  # Drop unknown column
+    df = df.drop('unknown', axis=1)
     if remove_duplicates:
-        df = df.drop_duplicates()  # Drop duplicates
+        df = df.drop_duplicates()
 
     ########## MISSING VALUES ##########
     # Get columns with missing values
@@ -89,18 +99,29 @@ def preprocessing(data: pd.DataFrame, imputation: str = "mode", remove_duplicate
         for col in cols_with_missing:
             df[col] = df[col].fillna(df[col].value_counts().index[0])
     elif imputation == 'knn':
-        pass
+        pass  # TODO
     ###################################
 
+    ########## CATEGORICAL CONVERSION ##########
     for col in ['det_ind_code', 'det_occ_code', 'own_or_self', 'vet_benefits', 'year']:
         df[col] = df[col].astype('category')  # Change to categorical type
-
     age_bins = [-1, 18, 25, 35, 45, 55, 65, 75, 85, 95, 105]
     # Change to categorical type
     df['age'] = pd.cut(df['age'], bins=age_bins, labels=age_bins[:-1])
 
     for col in df.select_dtypes(include=['object']).columns:
         df[col] = df[col].astype('category')
+    #############################################
+
+    ########## SCALING ##########
+    num_col = df.select_dtypes(include=['int64', 'float64']).columns
+    if scaling == 'minmax':
+        df[num_col] = (df[num_col] - df[num_col].min()) / \
+            (df[num_col].max() - df[num_col].min())
+    elif scaling == 'standard':
+        df[num_col] = (df[num_col] - df[num_col].mean()) / \
+            df[num_col].std()
+    ############################
 
     df['income_50k'] = np.where(df['income_50k'] == ' - 50000.', 0, 1)
 
