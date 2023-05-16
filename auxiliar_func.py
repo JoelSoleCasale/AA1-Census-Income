@@ -3,10 +3,13 @@ import numpy as np
 from sklearn.cluster import KMeans
 
 
-def downsampling(data: pd.DataFrame, ratio: float = 0.7, type: str = "clusters") -> pd.DataFrame:
+def downsampling(data: pd.DataFrame, target: str = 'income_50k', ratio: float = 0.7, type: str = "clusters") -> pd.DataFrame:
     """Downsampling of the majority class in a dataset. The downsampling is done in clusters or randomly.
     data: pd.DataFrame
         Dataset to downsample
+    target: str
+        Name of the target column to balance (default: 'income_50k')
+        Must be a binary column
     ratio: float
         Ratio of the majority class to downsample
     type: str
@@ -53,18 +56,10 @@ def downsampling(data: pd.DataFrame, ratio: float = 0.7, type: str = "clusters")
     elif type == "random":
         # Downsample majority class
         df_majority_downsampled = df_majority.sample(
-            frac=ratio, random_state=42)
-
-        # Separate majority and minority classes
-        df_majority = df[df['income_50k'] == 0]
-        df_minority = df[df['income_50k'] == 1]
-
-        # Downsample majority class
-        df_majority_downsampled = df_majority.sample(
-            frac=ratio, random_state=42)
+            frac=ratio, random_state=42) 
 
     # Combine minority class with downsampled majority class
-        df_downsampled = pd.concat([df_majority_downsampled, df_minority])
+    df_downsampled = pd.concat([df_majority_downsampled, df_minority])
 
     return df_downsampled
 

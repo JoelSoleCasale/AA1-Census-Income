@@ -4,6 +4,14 @@ import matplotlib.pyplot as plt
 import seaborn as sns
 from sklearn.metrics import confusion_matrix
 
+def pieplot(df, col='income_50k', labels = ['<=50K', '>50K'], save = None):
+    df[col].value_counts().plot(kind='pie', autopct='%1.1f%%', figsize=(5,5), labels=['', ''])
+    # keep the original labels
+    plt.legend(labels=labels)
+    plt.ylabel('')
+    if save:
+        plt.savefig(save)
+    plt.show()
 
 def pieplots(df, cols, grid=(None, 5), figsize=(20, 10), savename=None, other_freq=0.05):
     """
