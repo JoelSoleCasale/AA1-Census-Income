@@ -3,7 +3,12 @@ import numpy as np
 from sklearn.cluster import KMeans
 
 
-def downsampling(data: pd.DataFrame, target: str = 'income_50k', target_freq: float = 0.7, type: str = "random") -> pd.DataFrame:
+def downsampling(
+    data: pd.DataFrame,
+    target: str = 'income_50k',
+    target_freq: float = 0.7,
+    type: str = "random"
+) -> pd.DataFrame:
     """Downsampling of the majority class in a dataset. The downsampling is done in clusters or randomly.
     data: pd.DataFrame
         Dataset to downsample
@@ -65,7 +70,12 @@ def downsampling(data: pd.DataFrame, target: str = 'income_50k', target_freq: fl
     return df_downsampled
 
 
-def preprocessing(data: pd.DataFrame, imputation: str = "mode", remove_duplicates: bool = True, scaling: str = None) -> pd.DataFrame:
+def preprocessing(
+    data: pd.DataFrame,
+    imputation: str = "mode",
+    remove_duplicates: bool = True,
+    scaling: str = None
+) -> pd.DataFrame:
     """Preprocessing of the dataset. It removes the unknown values, the columns with more than 40% of missing values,
     imputes the missing values with the mode or the KNN algorithm, converts the categorical variables to numerical
     and scales the numerical variables.
@@ -83,6 +93,17 @@ def preprocessing(data: pd.DataFrame, imputation: str = "mode", remove_duplicate
     if remove_duplicates:
         df = df.drop_duplicates()
 
+    ########## CATEGORICAL CONVERSION ##########
+    for col in ['det_ind_code', 'det_occ_code', 'own_or_self', 'vet_benefits', 'year']:
+        df[col] = df[col].astype('category')  # Change to categorical type
+    age_bins = [-1, 18, 25, 35, 45, 55, 65, 75, 85, 95, 105]
+    # Change to categorical type
+    df['age'] = pd.cut(df['age'], bins=age_bins, labels=age_bins[:-1])
+
+    for col in df.select_dtypes(include=['object']).columns:
+        df[col] = df[col].astype('category')
+    #############################################
+
     ########## MISSING VALUES ##########
     # Get columns with missing values
     cols_with_missing = df.columns[df.isnull().any()]
@@ -94,20 +115,14 @@ def preprocessing(data: pd.DataFrame, imputation: str = "mode", remove_duplicate
     if imputation == 'mode':
         for col in cols_with_missing:
             df[col] = df[col].fillna(df[col].value_counts().index[0])
-    elif imputation == 'knn':
-        pass  # TODO
+    elif imputation == 'drop':
+        df = df.dropna()
+    elif imputation == 'nancat':
+        for col in cols_with_missing:
+            df[col] = df[col].cat.add_categories("Missing")
+            df[col] = df[col].fillna("Missing")
+
     ###################################
-
-    ########## CATEGORICAL CONVERSION ##########
-    for col in ['det_ind_code', 'det_occ_code', 'own_or_self', 'vet_benefits', 'year']:
-        df[col] = df[col].astype('category')  # Change to categorical type
-    age_bins = [-1, 18, 25, 35, 45, 55, 65, 75, 85, 95, 105]
-    # Change to categorical type
-    df['age'] = pd.cut(df['age'], bins=age_bins, labels=age_bins[:-1])
-
-    for col in df.select_dtypes(include=['object']).columns:
-        df[col] = df[col].astype('category')
-    #############################################
 
     ########## SCALING ##########
     num_col = df.select_dtypes(include=['int64', 'float64']).columns
