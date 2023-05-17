@@ -3,23 +3,24 @@ import numpy as np
 from sklearn.cluster import KMeans
 
 
-def downsampling(data: pd.DataFrame, target: str = 'income_50k', ratio: float = 0.7, type: str = "clusters") -> pd.DataFrame:
+def downsampling(data: pd.DataFrame, target: str = 'income_50k', target_freq: float = 0.7, type: str = "random") -> pd.DataFrame:
     """Downsampling of the majority class in a dataset. The downsampling is done in clusters or randomly.
     data: pd.DataFrame
         Dataset to downsample
     target: str
         Name of the target column to balance (default: 'income_50k')
         Must be a binary column
-    ratio: float
-        Ratio of the majority class to downsample
+    target_freq: float
+        Frequency of apparition of the majority class to downsample
     type: str
         Type of downsampling. It can be "clusters" or "random"
     """
 
     df = data.copy()
-    # downsample in clusters the majority class
-    df_majority = df[df['income_50k'] == 0]
-    df_minority = df[df['income_50k'] == 1]
+
+    majority_class = data[target].value_counts().idxmax()
+    df_majority = df[df[target] == majority_class]
+    df_minority = df[df[target] != majority_class]
 
     if type == "clusters":
         # Aplicar el algoritmo de clustering (K-Means)
@@ -30,7 +31,7 @@ def downsampling(data: pd.DataFrame, target: str = 'income_50k', ratio: float = 
         cluster_sizes = pd.Series(cluster_labels).value_counts().sort_index()
 
         # Calcular el tamaño objetivo para cada cluster
-        target_sizes = (cluster_sizes * ratio).astype(int)
+        target_sizes = (cluster_sizes * target_freq).astype(int)
 
         # Reducir o replicar las muestras en cada cluster según el tamaño objetivo
         downsampled_samples = []
@@ -54,9 +55,9 @@ def downsampling(data: pd.DataFrame, target: str = 'income_50k', ratio: float = 
         df_downsampled = pd.concat([downsampled_data, df_minority])
 
     elif type == "random":
-        # Downsample majority class
         df_majority_downsampled = df_majority.sample(
-            frac=ratio, random_state=42) 
+            n=int(target_freq/(1-target_freq) * df_minority.shape[0]), random_state=42)
+        df_downsampled = pd.concat([df_majority_downsampled, df_minority])
 
     # Combine minority class with downsampled majority class
     df_downsampled = pd.concat([df_majority_downsampled, df_minority])
