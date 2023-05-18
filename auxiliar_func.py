@@ -1,5 +1,6 @@
 import pandas as pd
 import numpy as np
+import itertools
 from sklearn.cluster import KMeans
 from sklearn.model_selection import train_test_split, KFold
 from sklearn.metrics import accuracy_score, confusion_matrix, classification_report, f1_score, precision_score, recall_score
@@ -84,9 +85,9 @@ def preprocessing(
     if imputation == 'mode':
         for col in cols_with_missing:
             df[col] = df[col].fillna(df[col].value_counts().index[0])
-    elif imputation == 'drop':
+    elif imputation == 'dropna':
         df = df.dropna()
-    elif imputation == 'nancat':
+    elif imputation == 'nacat':
         for col in cols_with_missing:
             df[col] = df[col].cat.add_categories("Missing")
             df[col] = df[col].fillna("Missing")
@@ -172,3 +173,32 @@ def cross_validation(
             scores[score] = np.mean(scores[score])
 
     return scores
+
+
+def test_preprocess_params(
+    df: pd.DataFrame,
+    model: object,
+    params: dict,
+    metrics: list = ['accuracy', 'f1_macro', 'precision_macro', 'recall_macro'],
+    verbose: int = 1
+) -> pd.DataFrame:
+    c_names = list(params.keys()) + metrics
+    results = pd.DataFrame(columns=c_names)
+
+    for combination in list(itertools.product(*params.values())):
+        if verbose > 0:
+            print(f"Adjusting for {combination}")
+        par_tr = {k: v for k, v in zip(params.keys(), combination)}
+        par_tr['remove_duplicates'] = True
+
+        # we remove the parameter that modifies the test dataset
+        par_te = par_tr.copy()
+        par_te['remove_duplicates'] = False
+        par_te['target_freq'] = None
+
+        cross_val_results = cross_validation(model, df, par_tr, par_te, cv=4,
+                                             scoring=metrics)
+        results = pd.concat([results, pd.DataFrame([list(combination) + list(cross_val_results.values())],
+                                                   columns=c_names)])
+
+    return results
