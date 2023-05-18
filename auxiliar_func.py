@@ -1,6 +1,8 @@
 import pandas as pd
 import numpy as np
 from sklearn.cluster import KMeans
+from sklearn.model_selection import train_test_split, KFold
+from sklearn.metrics import accuracy_score, confusion_matrix, classification_report, f1_score, precision_score, recall_score
 
 
 def downsampling(
@@ -39,7 +41,9 @@ def preprocessing(
     remove_duplicates: bool = True,
     scaling: str = None,
     cat_age: bool = True,
-    generate_dummies: bool = True
+    generate_dummies: bool = True,
+    target: str = 'income_50k',
+    target_freq: float | None = None
 ) -> pd.DataFrame:
     """Preprocessing of the dataset. It removes the unknown values, the columns with more than 40% of missing values,
     imputes the missing values with the mode or the KNN algorithm, converts the categorical variables to numerical
@@ -104,4 +108,67 @@ def preprocessing(
     if generate_dummies:
         df = pd.get_dummies(df)
 
+    if target_freq is not None:
+        df = downsampling(df, target, target_freq)
+
     return df
+
+
+def cross_validation(
+    model: object,
+    df_tr: pd.DataFrame,
+    par_tr: dict,
+    par_te: dict,
+    target: str = 'income_50k',
+    cv: int = 4,
+    scoring: list = ['accuracy', 'f1_macro',
+                     'precision_macro', 'recall_macro'],
+    mean_score=True
+) -> dict:
+    """Cross validation of a model. It returns the mean of the metrics of the cross validation.
+    model: object
+        Model to cross validate
+    df_tr: pd.DataFrame
+        Training dataset
+    par_tr: dict
+        Parameters to preprocess the training dataset
+    par_te: dict
+        Parameters to preprocess the test dataset
+    cv: int
+        Number of folds for the cross validation
+    scoring: list
+        Metrics to calculate in the cross validation
+    """
+
+    scores = {}
+    for score in scoring:
+        scores[score] = []
+
+    kf = KFold(n_splits=cv, shuffle=True, random_state=42)
+    for train_index, test_index in kf.split(df_tr):
+        df_tr_fold = df_tr.iloc[train_index]
+        df_te_fold = df_tr.iloc[test_index]
+
+        df_tr_fold = preprocessing(df_tr_fold, **par_tr)
+        df_te_fold = preprocessing(df_te_fold, **par_te)
+        df_tr_fold, df_te_fold = df_tr_fold.align(
+            df_te_fold, join='left', axis=1, fill_value=0)
+
+        X_tr, y_tr = df_tr_fold.drop(target, axis=1), df_tr_fold[target]
+        X_te, y_te = df_te_fold.drop(target, axis=1), df_te_fold[target]
+
+        model.fit(X_tr, y_tr)
+        y_pred = model.predict(X_te)
+
+        scores['accuracy'].append(accuracy_score(y_te, y_pred))
+        scores['f1_macro'].append(f1_score(y_te, y_pred, average='macro'))
+        scores['precision_macro'].append(
+            precision_score(y_te, y_pred, average='macro'))
+        scores['recall_macro'].append(
+            recall_score(y_te, y_pred, average='macro'))
+
+    if mean_score:
+        for score in scores.keys():
+            scores[score] = np.mean(scores[score])
+
+    return scores
