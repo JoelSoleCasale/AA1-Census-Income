@@ -26,7 +26,7 @@ def downsampling(
     df_majority = df[df[target] == majority_class]
     df_minority = df[df[target] != majority_class]
 
-    if target_freq > df_majority.shape[0]/df.shape[0]:
+    if target_freq >= df_majority.shape[0]/df.shape[0]:
         return df
 
     df_majority_downsampled = df_majority.sample(
@@ -109,7 +109,7 @@ def preprocessing(
     if generate_dummies:
         df = pd.get_dummies(df)
 
-    if target_freq is not None:
+    if target_freq is not None and target_freq < 1:
         df = downsampling(df, target, target_freq)
 
     return df
@@ -179,7 +179,8 @@ def test_preprocess_params(
     df: pd.DataFrame,
     model: object,
     params: dict,
-    metrics: list = ['accuracy', 'f1_macro', 'precision_macro', 'recall_macro'],
+    metrics: list = ['accuracy', 'f1_macro',
+                     'precision_macro', 'recall_macro'],
     verbose: int = 1
 ) -> pd.DataFrame:
     c_names = list(params.keys()) + metrics
