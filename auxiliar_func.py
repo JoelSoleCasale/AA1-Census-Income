@@ -181,6 +181,7 @@ def test_preprocess_params(
     params: dict,
     metrics: list = ['accuracy', 'f1_macro',
                      'precision_macro', 'recall_macro'],
+    cv: int = 4,
     verbose: int = 1
 ) -> pd.DataFrame:
     c_names = list(params.keys()) + metrics
@@ -197,7 +198,7 @@ def test_preprocess_params(
         par_te['remove_duplicates'] = False
         par_te['target_freq'] = None
 
-        cross_val_results = cross_validation(model, df, par_tr, par_te, cv=4,
+        cross_val_results = cross_validation(model, df, par_tr, par_te, cv=cv,
                                              scoring=metrics)
         results = pd.concat([results, pd.DataFrame([list(combination) + list(cross_val_results.values())],
                                                    columns=c_names)])
