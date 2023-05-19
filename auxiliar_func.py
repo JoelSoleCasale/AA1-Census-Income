@@ -119,12 +119,12 @@ def cross_validation(
     model: object,
     df_tr: pd.DataFrame,
     par_tr: dict,
-    par_te: dict,
+    par_te: dict | None = None,
     target: str = 'income_50k',
     cv: int = 4,
     scoring: list = ['accuracy', 'f1_macro',
                      'precision_macro', 'recall_macro'],
-    mean_score=True
+    mean_score: bool = True
 ) -> dict:
     """Cross validation of a model. It returns the mean of the metrics of the cross validation.
     model: object
@@ -140,6 +140,10 @@ def cross_validation(
     scoring: list
         Metrics to calculate in the cross validation
     """
+    if par_te is None:
+        par_te = par_tr.copy()
+        par_te['remove_duplicates'] = False
+        par_te['target_freq'] = None
 
     scores = {}
     for score in scoring:
@@ -193,12 +197,7 @@ def test_preprocess_params(
         par_tr = {k: v for k, v in zip(params.keys(), combination)}
         par_tr['remove_duplicates'] = True
 
-        # we remove the parameter that modifies the test dataset
-        par_te = par_tr.copy()
-        par_te['remove_duplicates'] = False
-        par_te['target_freq'] = None
-
-        cross_val_results = cross_validation(model, df, par_tr, par_te, cv=cv,
+        cross_val_results = cross_validation(model, df, par_tr, cv=cv,
                                              scoring=metrics)
         results = pd.concat([results, pd.DataFrame([list(combination) + list(cross_val_results.values())],
                                                    columns=c_names)])
