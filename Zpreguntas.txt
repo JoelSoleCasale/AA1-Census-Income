@@ -1,3 +1,4 @@
 - borramos los duplicados sobre los conjuntos de test y train o solo del de train?
 - que métricas deberíamos evaluar entre los modelos ajustados?
 - cross validation manualmente si aplicamos downsampling a nuestras muestras?
+- tenemos que hacer nuestro propio gridsearchCV?
