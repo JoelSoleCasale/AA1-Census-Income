@@ -186,9 +186,10 @@ def test_preprocess_params(
     metrics: list = ['accuracy', 'f1_macro',
                      'precision_macro', 'recall_macro'],
     cv: int = 4,
-    verbose: int = 1
+    verbose: int = 1,
+    col_prefix: str = 'prep_'
 ) -> pd.DataFrame:
-    c_names = list(params.keys()) + metrics
+    c_names = [col_prefix + n for n in params.keys()] + metrics
     results = pd.DataFrame(columns=c_names)
 
     for combination in list(itertools.product(*params.values())):
@@ -198,6 +199,34 @@ def test_preprocess_params(
         par_tr['remove_duplicates'] = True
 
         cross_val_results = cross_validation(model, df, par_tr, cv=cv,
+                                             scoring=metrics)
+        results = pd.concat([results, pd.DataFrame([list(combination) + list(cross_val_results.values())],
+                                                   columns=c_names)])
+
+    return results
+
+def test_model_params(
+    df: pd.DataFrame,
+    model: object,
+    params: dict,
+    par_tr: dict,
+    par_te: dict | None = None,
+    metrics: list = ['accuracy', 'f1_macro',
+                     'precision_macro', 'recall_macro'],
+    cv: int = 4,
+    verbose: int = 1,
+    col_prefix: str = 'model_'
+) -> pd.DataFrame:
+    c_names = [col_prefix + n for n in params.keys()] + metrics
+    results = pd.DataFrame(columns=c_names)
+
+    for combination in list(itertools.product(*params.values())):
+        if verbose > 0:
+            print(f"Adjusting for {combination}")
+        par_model = {k: v for k, v in zip(params.keys(), combination)}
+        model.set_params(**par_model)
+
+        cross_val_results = cross_validation(model, df, par_tr, par_te, cv=cv,
                                              scoring=metrics)
         results = pd.concat([results, pd.DataFrame([list(combination) + list(cross_val_results.values())],
                                                    columns=c_names)])
