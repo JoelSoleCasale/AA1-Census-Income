@@ -214,21 +214,41 @@ def test_model_params(
     metrics: list = ['accuracy', 'f1_macro',
                      'precision_macro', 'recall_macro'],
     cv: int = 4,
-    verbose: int = 1,
-    col_prefix: str = 'model_'
+    verbose: int = 1
 ) -> pd.DataFrame:
-    c_names = [col_prefix + n for n in params.keys()] + metrics
+    c_names = ['model_param'] + metrics
     results = pd.DataFrame(columns=c_names)
 
     for combination in list(itertools.product(*params.values())):
         if verbose > 0:
             print(f"Adjusting for {combination}")
-        par_model = {k: v for k, v in zip(params.keys(), combination)}
-        model.set_params(**par_model)
+        try:
+            par_model = {k: v for k, v in zip(params.keys(), combination)}
+            model.set_params(**par_model)
 
-        cross_val_results = cross_validation(model, df, par_tr, par_te, cv=cv,
-                                             scoring=metrics)
-        results = pd.concat([results, pd.DataFrame([list(combination) + list(cross_val_results.values())],
-                                                   columns=c_names)])
+            cross_val_results = cross_validation(model, df, par_tr, par_te, cv=cv,
+                                                scoring=metrics)
+            results = pd.concat([results, pd.DataFrame([par_model] + list(cross_val_results.values()),
+                                                    columns=c_names)])
+        except Exception as e:
+            print(f"Error in {combination}")
+            if verbose > 1:
+                print(e)                
 
     return results
+
+# tests the best preprocessing combination with a model
+# save the best 5 preprocessing combinations
+# with the best preprocessing combination, find the best model parameters
+# test the best model parameters with the best preprocessing combination from the 5 best preprocessing combinations 
+# if the best preprocessing combination is the same as the best model parameters, then we have the best combination
+# if not, we have to test the best model parameters with the best preprocessing combination from the 5 best preprocessing combinations
+def search_best_combination(
+    df: pd.DataFrame,
+    model: object,
+    model_params_grid: dict,
+    prep_params_grid: dict,
+    target_metric: str = 'accuracy',
+    cv: int = 4,
+    verbose: int = 1
+) -> pd.DataFrame:
