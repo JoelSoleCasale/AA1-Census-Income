@@ -1,6 +1,8 @@
 import pandas as pd
 import numpy as np
 import itertools
+from typing import Literal
+
 from sklearn.cluster import KMeans
 from sklearn.model_selection import train_test_split, KFold
 from sklearn.metrics import accuracy_score, confusion_matrix, classification_report, f1_score, precision_score, recall_score
@@ -254,62 +256,85 @@ def test_model_params(
 # keep the best 5 model parameters
 # repeat the last two steps searching over the best 5 preprocessing combinations and 5 model parameters until no improvement is found
 # return a dataframe with all the trained models and their metrics sorted by the target metric
-
-
 def search_best_combination(
     model: object,
     model_params_grid: dict,
     prep_params_grid: dict,
     df: pd.DataFrame,
-    target_metric: str = 'f1_macro',
+    target_metric: Literal['accuracy', 'f1_macro', 'precision_macro', 'recall_macro'] = 'f1_macro',
     cv: int = 4,
     N: int = 5,
-    verbose: int = 1
+    verbose: int = 1,
+    max_iter: int = 10
 ) -> pd.DataFrame:
 
     best_mod_param = [{k: v[0] for k, v in model_params_grid.items()}]
     best_prep_param = []
 
     results = pd.DataFrame(columns=['prep_param', 'model_param',
-                           'accuracy', 'f1_macro', 'precision_macro', 'recall_macro'])
+                           'accuracy', 'f1_macro', 'precision_macro', 'recall_macro'],
+                           index=[0,1], dtype=object)
+    
+    
+    def split_computed(mod_par: list, prep_par: list):
+        '''returns a list of all the non computed combinations of preprocessing and model parameters
+        and returns a list of the computed model and preprocessing parameters and the results of the
+        computed combinations'''
+        nonlocal results
+        nc_prep_par, nc_mod_par, computed = [], [], pd.DataFrame(columns=results.columns)
+        if isinstance(mod_par, dict) or isinstance(prep_par, dict): return mod_par, prep_par, computed
+        for m_par, p_par in zip(mod_par, prep_par):
+            row = results[(results['prep_param'] == p_par) & (results['model_param'] == m_par)]
+            if row.empty:
+                nc_prep_par.append(p_par)
+                nc_mod_par.append(m_par)
+            else:
+                computed = pd.concat([computed, row])
+        return nc_mod_par, nc_prep_par, computed
 
-    def update_prep_params(mod_param, prep_par_list):
+    def update_prep_params(mod_param: dict, prep_par_list: list):
+        '''searches the best preprocessing parameters for a given model parameters'''''
         nonlocal best_prep_param, results
         model.set_params(**mod_param)
-        prep_par = test_preprocess_params(
-            model, prep_par_list, df, cv=cv, verbose=verbose).sort_values(by=target_metric, ascending=False).reset_index(drop=True)
-        prep_par['model_param'] = mod_param
+        _, prep_par_list, computed = split_computed([mod_param]*len(prep_par_list), prep_par_list)
+        prep_par = test_preprocess_params(model, prep_par_list, df, cv=cv, verbose=verbose-2).sort_values(by=target_metric, ascending=False).reset_index(drop=True)
+        prep_par['model_param'] = pd.Series([mod_param]*len(prep_par))
         results = pd.concat([results, prep_par])
-        best_prep_param = prep_par['prep_param'][:N].tolist()
+        best_prep_param = pd.concat([prep_par,computed])['prep_param'][:N].tolist()
 
-    def update_mod_params(prep_param, mod_par_list):
+    def update_mod_params(prep_param: dict, mod_par_list: list):
+        '''searches the best model parameters for a given preprocessing parameters'''''
         nonlocal best_mod_param, results
-        prep_param = prep_param[0]
-        mod_par = test_model_params(
-            model, mod_par_list, df, prep_param, cv=cv, verbose=verbose).sort_values(by=target_metric, ascending=False).reset_index(drop=True)
-        mod_par['prep_param'] = prep_param
+        mod_par_list, _, computed = split_computed(mod_par_list, [prep_param]*len(mod_par_list))
+        mod_par = test_model_params(model, mod_par_list, df, prep_param, cv=cv, verbose=verbose-2).sort_values(by=target_metric, ascending=False).reset_index(drop=True)
+        mod_par['prep_param'] = pd.Series([prep_param]*len(mod_par))
         results = pd.concat([results, mod_par])
-        best_mod_param = mod_par['model_param'][:N].tolist()
+        best_mod_param = pd.concat([mod_par,computed])['model_param'][:N].tolist()
 
-    update_prep_params(best_mod_param[0], prep_params_grid)
-    update_mod_params(best_prep_param, model_params_grid)
-
-    print(best_prep_param)
-    print(best_mod_param)
-    return
-
-    best_metric = results[target_metric][0]
-
-    while True:
-        if verbose > 0:
-            print(f"Best metric: {best_metric}")
-        if verbose > 0:
-            print(f"Best preprocessing parameters: {best_prep_param}")
-        if verbose > 0:
-            print(f"Best model parameters: {best_mod_param}")
-
+    best_metric = 0
+    for i in range(1,max_iter+1):
         update_prep_params(best_mod_param[0], prep_params_grid)
-        update_mod_params(best_prep_param, model_params_grid)
+        update_mod_params(best_prep_param[0], model_params_grid)
 
+        results = results.sort_values(by=target_metric, ascending=False).reset_index(drop=True).dropna()
+
+        if results[target_metric].max() > best_metric:
+            best_metric = results[target_metric].max()
+        else:
+            break
+        
+        # update the parameter grid without duplicates
+        results['temp1'] = results['prep_param'].astype(str)
+        prep_params_grid = results.drop_duplicates(subset='temp1').drop('temp1', axis=1)['prep_param'][:N].tolist()
+        results['temp2'] = results['model_param'].astype(str)
+        model_params_grid = results.drop_duplicates(subset='temp2').drop('temp2', axis=1)['model_param'][:N].tolist()
+
+        results = results.drop(['temp1', 'temp2'], axis=1)
+
+        if verbose > 0:
+            print(f"Iteration {i} | best metric: {best_metric}")
+            if verbose > 1:
+                print(f"Best preprocessing parameters: {best_prep_param}")
+                print(f"Best model parameters: {best_mod_param}")
 
     return results.sort_values(by=target_metric, ascending=False).reset_index(drop=True)
