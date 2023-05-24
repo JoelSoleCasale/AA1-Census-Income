@@ -1,2 +1,0 @@
-scaling,imputation,cat_age,target_freq,accuracy,f1_macro,precision_macro,recall_macro
-,mode,False,0.8,0.9425701507022943,0.7712012070970942,0.7564108124301185,0.7884149039581109

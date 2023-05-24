@@ -272,8 +272,8 @@ def search_best_combination(
     target_metric: Literal['accuracy', 'f1_macro',
                            'precision_macro', 'recall_macro'] = 'f1_macro',
     cv: int = 4,
-    N: int = 5,
-    verbose: int = 1,
+    N: int = 10,
+    verbose: int = 2,
     max_iter: int = 10,
     ignore_errors: bool = True
 ) -> pd.DataFrame:
