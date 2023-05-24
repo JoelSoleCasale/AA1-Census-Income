@@ -180,35 +180,37 @@ def cross_validation(
 
 
 def test_preprocess_params(
-    df: pd.DataFrame,
     model: object,
     params: dict,
+    df: pd.DataFrame,
     metrics: list = ['accuracy', 'f1_macro',
                      'precision_macro', 'recall_macro'],
     cv: int = 4,
     verbose: int = 1,
     col_prefix: str = 'prep_'
 ) -> pd.DataFrame:
-    c_names = [col_prefix + n for n in params.keys()] + metrics
-    results = pd.DataFrame(columns=c_names)
+    c_names = ['prep_param'] + metrics
+    results = pd.DataFrame(columns=c_names, dtype=object)
 
     for combination in list(itertools.product(*params.values())):
-        if verbose > 0:
-            print(f"Adjusting for {combination}")
-        par_tr = {k: v for k, v in zip(params.keys(), combination)}
-        par_tr['remove_duplicates'] = True
+        if verbose > 0: print(f"Adjusting for {combination}")
+        try:
+            par_tr = {k: v for k, v in zip(params.keys(), combination)}
+            par_tr['remove_duplicates'] = True
 
-        cross_val_results = cross_validation(model, df, par_tr, cv=cv,
-                                             scoring=metrics)
-        results = pd.concat([results, pd.DataFrame([list(combination) + list(cross_val_results.values())],
-                                                   columns=c_names)])
+            cross_val_results = cross_validation(model, df, par_tr, cv=cv,
+                                                scoring=metrics)
+            results = pd.concat([results, pd.DataFrame({'prep_param': [par_tr]} | cross_val_results)])
+        except Exception as e:
+            if verbose > 0: print(f"Error in {combination}")
+            if verbose > 1: print(e) 
 
     return results
 
 def test_model_params(
-    df: pd.DataFrame,
     model: object,
     params: dict,
+    df: pd.DataFrame,
     par_tr: dict,
     par_te: dict | None = None,
     metrics: list = ['accuracy', 'f1_macro',
@@ -217,23 +219,22 @@ def test_model_params(
     verbose: int = 1
 ) -> pd.DataFrame:
     c_names = ['model_param'] + metrics
-    results = pd.DataFrame(columns=c_names)
+    results = pd.DataFrame(columns=c_names, dtype=object)
 
     for combination in list(itertools.product(*params.values())):
-        if verbose > 0:
-            print(f"Adjusting for {combination}")
+        if verbose > 0: print(f"Adjusting for {combination}")
         try:
             par_model = {k: v for k, v in zip(params.keys(), combination)}
+
+            print(par_model)
             model.set_params(**par_model)
 
             cross_val_results = cross_validation(model, df, par_tr, par_te, cv=cv,
                                                 scoring=metrics)
-            results = pd.concat([results, pd.DataFrame([par_model] + list(cross_val_results.values()),
-                                                    columns=c_names)])
+            results = pd.concat([results, pd.DataFrame({'model_param': [par_model]} | cross_val_results)])
         except Exception as e:
-            print(f"Error in {combination}")
-            if verbose > 1:
-                print(e)                
+            if verbose > 0: print(f"Error in {combination}")
+            if verbose > 1: print(e)                
 
     return results
 
@@ -251,4 +252,4 @@ def search_best_combination(
     target_metric: str = 'accuracy',
     cv: int = 4,
     verbose: int = 1
-) -> pd.DataFrame:
+) -> pd.DataFrame: ...
