@@ -186,8 +186,7 @@ def test_preprocess_params(
     metrics: list = ['accuracy', 'f1_macro',
                      'precision_macro', 'recall_macro'],
     cv: int = 4,
-    verbose: int = 1,
-    col_prefix: str = 'prep_'
+    verbose: int = 1
 ) -> pd.DataFrame:
     c_names = ['prep_param'] + metrics
     results = pd.DataFrame(columns=c_names, dtype=object)
@@ -239,17 +238,67 @@ def test_model_params(
     return results
 
 # tests the best preprocessing combination with a model
-# save the best 5 preprocessing combinations
+# keep the best 5 preprocessing combinations
 # with the best preprocessing combination, find the best model parameters
-# test the best model parameters with the best preprocessing combination from the 5 best preprocessing combinations 
-# if the best preprocessing combination is the same as the best model parameters, then we have the best combination
-# if not, we have to test the best model parameters with the best preprocessing combination from the 5 best preprocessing combinations
+# keep the best 5 model parameters
+# repeat the last two steps searching over the best 5 preprocessing combinations and 5 model parameters until no improvement is found
+# return a dataframe with all the trained models and their metrics sorted by the target metric
 def search_best_combination(
-    df: pd.DataFrame,
     model: object,
     model_params_grid: dict,
     prep_params_grid: dict,
+    df: pd.DataFrame,
     target_metric: str = 'accuracy',
     cv: int = 4,
+    N: int = 5,
     verbose: int = 1
-) -> pd.DataFrame: ...
+) -> pd.DataFrame:
+    
+    best_mod_param = {k: v[0] for k, v in model_params_grid.items()}
+    best_prep_param = None
+
+    model.set_params(**best_mod_param)
+    resutls = pd.DataFrame(columns=['prep_param', 'model_param', 'accuracy', 'f1_macro', 'precision_macro', 'recall_macro'])
+
+    best_prep_params = test_preprocess_params(model, prep_params_grid, df, cv=cv, verbose=verbose)
+    best_prep_params['model_param'] = best_mod_param
+    resutls = pd.concat([resutls, best_prep_params])
+    best_prep_params = best_prep_params.sort_values(by=target_metric, ascending=False).reset_index(drop=True)
+    best_prep_params = best_prep_params[:N]
+    best_prep_param = best_prep_params['prep_param'][0]
+
+    best_model_params = test_model_params(model, model_params_grid, df, best_prep_param, cv=cv, verbose=verbose)
+    best_model_params['prep_param'] = best_prep_param
+    resutls = pd.concat([resutls, best_model_params])
+    best_model_params = best_model_params.sort_values(by=target_metric, ascending=False).reset_index(drop=True)
+    best_model_params = best_model_params[:N]
+    best_mod_param = best_model_params['model_param'][0]
+
+    best_metric = best_model_params[target_metric][0]
+
+    while True:
+        if verbose > 0: print(f"Best metric: {best_metric}")
+        if verbose > 0: print(f"Best preprocessing parameters: {best_prep_param}")
+        if verbose > 0: print(f"Best model parameters: {best_mod_param}")
+
+        model.set_params(**best_mod_param)
+        best_prep_params = test_preprocess_params(model, prep_params_grid, df, cv=cv, verbose=verbose)
+        best_prep_params['model_param'] = best_mod_param
+        resutls = pd.concat([resutls, best_prep_params])
+        best_prep_params = best_prep_params.sort_values(by=target_metric, ascending=False).reset_index(drop=True)
+        best_prep_params = best_prep_params[:N]
+        best_prep_param = best_prep_params['prep_param'][0]
+
+        best_model_params = test_model_params(model, model_params_grid, df, best_prep_param, cv=cv, verbose=verbose)
+        best_model_params['prep_param'] = best_prep_param
+        resutls = pd.concat([resutls, best_model_params])
+        best_model_params = best_model_params.sort_values(by=target_metric, ascending=False).reset_index(drop=True)
+        best_model_params = best_model_params[:N]
+        best_mod_param = best_model_params['model_param'][0]
+
+        if best_model_params[target_metric][0] > best_metric:
+            best_metric = best_model_params[target_metric][0]
+        else:
+            break
+
+    return best_model_params
