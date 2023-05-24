@@ -9,6 +9,18 @@ from sklearn.model_selection import train_test_split, KFold
 from sklearn.metrics import accuracy_score, confusion_matrix, classification_report, f1_score, precision_score, recall_score
 
 
+def expand_dicts(df: pd.DataFrame) -> pd.DataFrame:
+    '''Expands all the columns that are dictionaries with
+    a new column for each key in the dictionary'''
+    df = df.copy()
+    for col in df.columns:
+        if df[col].dtype == 'object':
+            try:
+                df = pd.concat([df.drop(col, axis=1), df[col].apply(pd.Series)], axis=1)
+            except:
+                pass
+    return df
+
 def downsampling(
     data: pd.DataFrame,
     target: str = 'income_50k',
@@ -192,7 +204,8 @@ def test_preprocess_params(
     metrics: list = ['accuracy', 'f1_macro',
                      'precision_macro', 'recall_macro'],
     cv: int = 4,
-    verbose: int = 1
+    verbose: int = 1,
+    ignore_errors: bool = False
 ) -> pd.DataFrame:
     c_names = ['prep_param'] + metrics
     results = pd.DataFrame(columns=c_names, dtype=object)
@@ -211,10 +224,9 @@ def test_preprocess_params(
             results = pd.concat([results, pd.DataFrame(
                 {'prep_param': [par_tr]} | cross_val_results)])
         except Exception as e:
-            if verbose > 0:
-                print(f"Error in {par_tr}")
-            if verbose > 1:
-                print(e)
+            if verbose > 0: print(f"Error in {par_tr}")
+            if verbose > 1: print(e)
+            if not ignore_errors: raise e
 
     return results
 
