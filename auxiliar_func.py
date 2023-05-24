@@ -181,7 +181,7 @@ def cross_validation(
 
 def test_preprocess_params(
     model: object,
-    params: dict,
+    prep_grid: dict,
     df: pd.DataFrame,
     metrics: list = ['accuracy', 'f1_macro',
                      'precision_macro', 'recall_macro'],
@@ -191,24 +191,31 @@ def test_preprocess_params(
     c_names = ['prep_param'] + metrics
     results = pd.DataFrame(columns=c_names, dtype=object)
 
-    for combination in list(itertools.product(*params.values())):
-        if verbose > 0: print(f"Adjusting for {combination}")
+    if type(prep_grid) != list:
+        aux = list(itertools.product(*prep_grid.values()))
+        prep_grid = [{k: v for k, v in zip(prep_grid.keys(), combination)} for combination in aux]
+    for par_tr in prep_grid:
+        if verbose > 0:
+            print(f"Adjusting for {list(par_tr.values())}")
         try:
-            par_tr = {k: v for k, v in zip(params.keys(), combination)}
             par_tr['remove_duplicates'] = True
 
             cross_val_results = cross_validation(model, df, par_tr, cv=cv,
-                                                scoring=metrics)
-            results = pd.concat([results, pd.DataFrame({'prep_param': [par_tr]} | cross_val_results)])
+                                                 scoring=metrics)
+            results = pd.concat([results, pd.DataFrame(
+                {'prep_param': [par_tr]} | cross_val_results)])
         except Exception as e:
-            if verbose > 0: print(f"Error in {combination}")
-            if verbose > 1: print(e) 
+            if verbose > 0:
+                print(f"Error in {par_tr}")
+            if verbose > 1:
+                print(e)
 
     return results
 
+
 def test_model_params(
     model: object,
-    params: dict,
+    mod_grid: dict | list,
     df: pd.DataFrame,
     par_tr: dict,
     par_te: dict | None = None,
@@ -220,20 +227,24 @@ def test_model_params(
     c_names = ['model_param'] + metrics
     results = pd.DataFrame(columns=c_names, dtype=object)
 
-    for combination in list(itertools.product(*params.values())):
-        if verbose > 0: print(f"Adjusting for {combination}")
+    if type(mod_grid) != list:
+        aux = list(itertools.product(*mod_grid.values()))
+        mod_grid = [{k: v for k, v in zip(mod_grid.keys(), combination)} for combination in aux]
+    for par_model in mod_grid:
+        if verbose > 0:
+            print(f"Adjusting for {list(par_model.values())}")
         try:
-            par_model = {k: v for k, v in zip(params.keys(), combination)}
-
-            print(par_model)
             model.set_params(**par_model)
 
             cross_val_results = cross_validation(model, df, par_tr, par_te, cv=cv,
-                                                scoring=metrics)
-            results = pd.concat([results, pd.DataFrame({'model_param': [par_model]} | cross_val_results)])
+                                                 scoring=metrics)
+            results = pd.concat([results, pd.DataFrame(
+                {'model_param': [par_model]} | cross_val_results)])
         except Exception as e:
-            if verbose > 0: print(f"Error in {combination}")
-            if verbose > 1: print(e)                
+            if verbose > 0:
+                print(f"Error in {par_model}")
+            if verbose > 1:
+                print(e)
 
     return results
 
@@ -243,62 +254,62 @@ def test_model_params(
 # keep the best 5 model parameters
 # repeat the last two steps searching over the best 5 preprocessing combinations and 5 model parameters until no improvement is found
 # return a dataframe with all the trained models and their metrics sorted by the target metric
+
+
 def search_best_combination(
     model: object,
     model_params_grid: dict,
     prep_params_grid: dict,
     df: pd.DataFrame,
-    target_metric: str = 'accuracy',
+    target_metric: str = 'f1_macro',
     cv: int = 4,
     N: int = 5,
     verbose: int = 1
 ) -> pd.DataFrame:
-    
-    best_mod_param = {k: v[0] for k, v in model_params_grid.items()}
-    best_prep_param = None
 
-    model.set_params(**best_mod_param)
-    resutls = pd.DataFrame(columns=['prep_param', 'model_param', 'accuracy', 'f1_macro', 'precision_macro', 'recall_macro'])
+    best_mod_param = [{k: v[0] for k, v in model_params_grid.items()}]
+    best_prep_param = []
 
-    best_prep_params = test_preprocess_params(model, prep_params_grid, df, cv=cv, verbose=verbose)
-    best_prep_params['model_param'] = best_mod_param
-    resutls = pd.concat([resutls, best_prep_params])
-    best_prep_params = best_prep_params.sort_values(by=target_metric, ascending=False).reset_index(drop=True)
-    best_prep_params = best_prep_params[:N]
-    best_prep_param = best_prep_params['prep_param'][0]
+    results = pd.DataFrame(columns=['prep_param', 'model_param',
+                           'accuracy', 'f1_macro', 'precision_macro', 'recall_macro'])
 
-    best_model_params = test_model_params(model, model_params_grid, df, best_prep_param, cv=cv, verbose=verbose)
-    best_model_params['prep_param'] = best_prep_param
-    resutls = pd.concat([resutls, best_model_params])
-    best_model_params = best_model_params.sort_values(by=target_metric, ascending=False).reset_index(drop=True)
-    best_model_params = best_model_params[:N]
-    best_mod_param = best_model_params['model_param'][0]
+    def update_prep_params(mod_param, prep_par_list):
+        nonlocal best_prep_param, results
+        model.set_params(**mod_param)
+        prep_par = test_preprocess_params(
+            model, prep_par_list, df, cv=cv, verbose=verbose).sort_values(by=target_metric, ascending=False).reset_index(drop=True)
+        prep_par['model_param'] = mod_param
+        results = pd.concat([results, prep_par])
+        best_prep_param = prep_par['prep_param'][:N].tolist()
 
-    best_metric = best_model_params[target_metric][0]
+    def update_mod_params(prep_param, mod_par_list):
+        nonlocal best_mod_param, results
+        prep_param = prep_param[0]
+        mod_par = test_model_params(
+            model, mod_par_list, df, prep_param, cv=cv, verbose=verbose).sort_values(by=target_metric, ascending=False).reset_index(drop=True)
+        mod_par['prep_param'] = prep_param
+        results = pd.concat([results, mod_par])
+        best_mod_param = mod_par['model_param'][:N].tolist()
+
+    update_prep_params(best_mod_param[0], prep_params_grid)
+    update_mod_params(best_prep_param, model_params_grid)
+
+    print(best_prep_param)
+    print(best_mod_param)
+    return
+
+    best_metric = results[target_metric][0]
 
     while True:
-        if verbose > 0: print(f"Best metric: {best_metric}")
-        if verbose > 0: print(f"Best preprocessing parameters: {best_prep_param}")
-        if verbose > 0: print(f"Best model parameters: {best_mod_param}")
+        if verbose > 0:
+            print(f"Best metric: {best_metric}")
+        if verbose > 0:
+            print(f"Best preprocessing parameters: {best_prep_param}")
+        if verbose > 0:
+            print(f"Best model parameters: {best_mod_param}")
 
-        model.set_params(**best_mod_param)
-        best_prep_params = test_preprocess_params(model, prep_params_grid, df, cv=cv, verbose=verbose)
-        best_prep_params['model_param'] = best_mod_param
-        resutls = pd.concat([resutls, best_prep_params])
-        best_prep_params = best_prep_params.sort_values(by=target_metric, ascending=False).reset_index(drop=True)
-        best_prep_params = best_prep_params[:N]
-        best_prep_param = best_prep_params['prep_param'][0]
+        update_prep_params(best_mod_param[0], prep_params_grid)
+        update_mod_params(best_prep_param, model_params_grid)
 
-        best_model_params = test_model_params(model, model_params_grid, df, best_prep_param, cv=cv, verbose=verbose)
-        best_model_params['prep_param'] = best_prep_param
-        resutls = pd.concat([resutls, best_model_params])
-        best_model_params = best_model_params.sort_values(by=target_metric, ascending=False).reset_index(drop=True)
-        best_model_params = best_model_params[:N]
-        best_mod_param = best_model_params['model_param'][0]
 
-        if best_model_params[target_metric][0] > best_metric:
-            best_metric = best_model_params[target_metric][0]
-        else:
-            break
-
-    return best_model_params
+    return results.sort_values(by=target_metric, ascending=False).reset_index(drop=True)
