@@ -313,7 +313,10 @@ def search_best_combination(
 
     best_metric = 0
     for i in range(1,max_iter+1):
+        if verbose > 0: print(f'===Iteration {i}===')
+        if verbose > 0: print(f'Searching preprocessing parameters...')
         update_prep_params(best_mod_param[0], prep_params_grid)
+        if verbose > 0: print(f'Searching model parameters...')
         update_mod_params(best_prep_param[0], model_params_grid)
 
         results = results.sort_values(by=target_metric, ascending=False).reset_index(drop=True).dropna()
@@ -332,7 +335,7 @@ def search_best_combination(
         results = results.drop(['temp1', 'temp2'], axis=1)
 
         if verbose > 0:
-            print(f"Iteration {i} | best metric: {best_metric}")
+            print(f"Best metric: {best_metric}")
             if verbose > 1:
                 print(f"Best preprocessing parameters: {best_prep_param}")
                 print(f"Best model parameters: {best_mod_param}")
