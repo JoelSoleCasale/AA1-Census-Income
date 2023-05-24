@@ -4,6 +4,7 @@ import itertools
 from typing import Literal
 
 from sklearn.cluster import KMeans
+from sklearn.base import clone
 from sklearn.model_selection import train_test_split, KFold
 from sklearn.metrics import accuracy_score, confusion_matrix, classification_report, f1_score, precision_score, recall_score
 
@@ -142,10 +143,13 @@ def cross_validation(
     scoring: list
         Metrics to calculate in the cross validation
     """
+    model = clone(model)  # to reset the model
     if par_te is None:
         par_te = par_tr.copy()
         par_te['remove_duplicates'] = False
         par_te['target_freq'] = None
+        if par_te['imputation'] == 'dropna':
+            par_te['imputation'] = 'mode'
 
     scores = {}
     for score in scoring:
