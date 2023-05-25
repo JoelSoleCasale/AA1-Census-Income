@@ -4,6 +4,8 @@ import itertools
 import time
 from typing import Literal
 
+from imblearn.under_sampling import RandomUnderSampler, NearMiss, TomekLinks, EditedNearestNeighbours, OneSidedSelection
+
 from sklearn.cluster import KMeans
 from sklearn.base import clone
 from sklearn.model_selection import train_test_split, KFold
@@ -17,8 +19,7 @@ def expand_dicts(df: pd.DataFrame) -> pd.DataFrame:
     for col in df.columns:
         if df[col].dtype == 'object':
             try:
-                df = pd.concat(
-                    [df.drop(col, axis=1), df[col].apply(pd.Series)], axis=1)
+                df = pd.concat([df.drop(col, axis=1), df[col].apply(pd.Series)], axis=1)
             except:
                 pass
     return df
@@ -26,32 +27,45 @@ def expand_dicts(df: pd.DataFrame) -> pd.DataFrame:
 
 def downsampling(
     data: pd.DataFrame,
+    method: Literal[
+        'random',
+        'NearMiss'
+    ] = 'random',
     target: str = 'income_50k',
-    target_freq: float = 0.7
+    target_freq: float = 0.7,
 ) -> pd.DataFrame:
     """Downsampling of the majority class in a dataset. The downsampling is done in clusters or randomly.
     data: pd.DataFrame
         Dataset to downsample
+    method: str
+        Method used to downsample.
+        It can be 'random' or 'NearMiss'
+    version: int
+        Version of the NearMiss algorithm to use (default: 1)
     target: str
         Name of the target column to balance (default: 'income_50k')
     target_freq: float
         Frequency of apparition of the majority class to downsample
     """
+    X = data.drop(target, axis=1)
+    y = data[target]
 
-    df = data.copy()
+    samples_per_class = {
+        0: min(int(target_freq/(1-target_freq) * len(y[y == 1])), len(y[y == 0])),
+        1: len(y[y == 1])}
+    if method == 'random':
+        sampler = RandomUnderSampler(sampling_strategy=samples_per_class)
+    elif method == 'NearMiss':
+        sampler = NearMiss(sampling_strategy=samples_per_class)
+    else:
+        raise ValueError(f"Unknown method: {method}")
 
-    majority_class = data[target].value_counts().idxmax()
-    df_majority = df[df[target] == majority_class]
-    df_minority = df[df[target] != majority_class]
+    X_resampled, y_resampled = sampler.fit_resample(X, y)
 
-    if target_freq >= df_majority.shape[0]/df.shape[0]:
-        return df
+    resampled_data = pd.concat([pd.DataFrame(X_resampled), pd.DataFrame(y_resampled, columns=[target])], axis=1)
 
-    df_majority_downsampled = df_majority.sample(
-        n=int(target_freq/(1-target_freq) * df_minority.shape[0]), random_state=42)
-    df_downsampled = pd.concat([df_majority_downsampled, df_minority])
+    return resampled_data
 
-    return df_downsampled
 
 
 def preprocessing(
@@ -60,8 +74,13 @@ def preprocessing(
     remove_duplicates: bool = True,
     scaling: str = None,
     cat_age: bool = True,
+    merge_capital: bool = True,
     generate_dummies: bool = True,
     target: str = 'income_50k',
+    downsampling_method: Literal[
+        'random',
+        'NearMiss'
+    ] = 'random',
     target_freq: float | None = None
 ) -> pd.DataFrame:
     """Preprocessing of the dataset. It removes the unknown values, the columns with more than 40% of missing values,
@@ -85,9 +104,12 @@ def preprocessing(
     for col in ['det_ind_code', 'det_occ_code', 'own_or_self', 'vet_benefits', 'year']:
         df[col] = df[col].astype('category')  # Change to categorical type
     if cat_age:
-        age_bins = [-1, 18, 25, 35, 45, 55, 65, 75, 85, 95, 105]
+        age_bins = [0, 18, 25, 35, 45, 55, 65, 75, 85, 95, 105]
         df['age'] = pd.cut(df['age'], bins=age_bins,
-                           labels=age_bins[:-1]).astype('category')
+                           labels=age_bins[:-1], include_lowest=True).astype('category')
+    if merge_capital:
+        df['capital_balance'] = df['capital_gains'] - df['capital_losses']
+        df = df.drop(['capital_gains', 'capital_losses'], axis=1)
 
     for col in df.select_dtypes(include=['object']).columns:
         df[col] = df[col].astype('category')
@@ -97,8 +119,7 @@ def preprocessing(
     # Get columns with missing values
     cols_with_missing = df.columns[df.isnull().any()]
     # Drop columns with more than 40% of missing values
-    df = df.drop(
-        cols_with_missing[df[cols_with_missing].isnull().mean() > 0.4], axis=1)
+    df = df.drop(cols_with_missing[df[cols_with_missing].isnull().mean() > 0.4], axis=1)
 
     cols_with_missing = df.columns[df.isnull().any()]
     if imputation == 'mode':
@@ -129,7 +150,8 @@ def preprocessing(
         df = pd.get_dummies(df)
 
     if target_freq is not None and target_freq < 1:
-        df = downsampling(df, target, target_freq)
+        df = downsampling(df, method=downsampling_method,
+                          target=target, target_freq=target_freq)
 
     return df
 
