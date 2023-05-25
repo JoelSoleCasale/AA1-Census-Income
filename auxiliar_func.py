@@ -60,6 +60,7 @@ def preprocessing(
     remove_duplicates: bool = True,
     scaling: str = None,
     cat_age: bool = True,
+    merge_capital: bool = True,
     generate_dummies: bool = True,
     target: str = 'income_50k',
     target_freq: float | None = None
@@ -88,6 +89,9 @@ def preprocessing(
         age_bins = [0, 18, 25, 35, 45, 55, 65, 75, 85, 95, 105]
         df['age'] = pd.cut(df['age'], bins=age_bins,
                            labels=age_bins[:-1], include_lowest=True).astype('category')
+    if merge_capital:
+        df['capital_balance'] = df['capital_gains'] - df['capital_losses']
+        df = df.drop(['capital_gains', 'capital_losses'], axis=1)
 
     for col in df.select_dtypes(include=['object']).columns:
         df[col] = df[col].astype('category')
