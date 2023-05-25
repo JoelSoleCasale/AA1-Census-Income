@@ -85,9 +85,9 @@ def preprocessing(
     for col in ['det_ind_code', 'det_occ_code', 'own_or_self', 'vet_benefits', 'year']:
         df[col] = df[col].astype('category')  # Change to categorical type
     if cat_age:
-        age_bins = [-1, 18, 25, 35, 45, 55, 65, 75, 85, 95, 105]
+        age_bins = [0, 18, 25, 35, 45, 55, 65, 75, 85, 95, 105]
         df['age'] = pd.cut(df['age'], bins=age_bins,
-                           labels=age_bins[:-1]).astype('category')
+                           labels=age_bins[:-1], include_lowest=True).astype('category')
 
     for col in df.select_dtypes(include=['object']).columns:
         df[col] = df[col].astype('category')
@@ -97,8 +97,7 @@ def preprocessing(
     # Get columns with missing values
     cols_with_missing = df.columns[df.isnull().any()]
     # Drop columns with more than 40% of missing values
-    df = df.drop(
-        cols_with_missing[df[cols_with_missing].isnull().mean() > 0.4], axis=1)
+    df = df.drop(cols_with_missing[df[cols_with_missing].isnull().mean() > 0.4], axis=1)
 
     cols_with_missing = df.columns[df.isnull().any()]
     if imputation == 'mode':
