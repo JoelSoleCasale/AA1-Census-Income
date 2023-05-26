@@ -186,7 +186,8 @@ def cross_validation(
     target: str = 'income_50k',
     cv: int = 4,
     mean_score: bool = True,
-    n_jobs: int = -1
+    n_jobs: int = -1,
+    return_predict: bool = False
 ) -> dict:
     """Cross validation of a model. It returns the mean of the metrics of the cross validation.
     model: object
@@ -233,18 +234,24 @@ def cross_validation(
         scr['precision_macro'] = precision_score(y_te, y_pred, average='macro')
         scr['recall_macro'] = recall_score(y_te, y_pred, average='macro')
 
-        return scr
+        return scr, y_te, y_pred
 
     kf = KFold(n_splits=cv, shuffle=True, random_state=42)    
-    scores = Parallel(n_jobs=n_jobs)(delayed(cv_fold)(train_index, test_index, df_tr) for train_index, test_index in kf.split(df_tr))
+    rescv = Parallel(n_jobs=n_jobs)(delayed(cv_fold)(train_index, test_index, df_tr) for train_index, test_index in kf.split(df_tr))
+
+    scores = [x[0] for x in rescv]
+    if return_predict:
+        y_te = [x[1] for x in rescv]
+        y_pr = [x[2] for x in rescv]
+        y_te = pd.concat(y_te, ignore_index=True)
+        y_pr = np.concatenate(y_pr, axis=0)
 
     scores = {k: [d[k] for d in scores] for k in scores[0]}
-
     if mean_score:
         for score in scores.keys():
             scores[score] = np.mean(scores[score])
     scores['tex'] = time.time() - t1
-    return scores
+    return scores if not return_predict else (scores, y_te, y_pr)
 
 
 def test_preprocess_params(
