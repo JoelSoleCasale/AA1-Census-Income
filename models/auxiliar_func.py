@@ -2,6 +2,7 @@ import pandas as pd
 import numpy as np
 import itertools
 import time
+import ast
 from typing import Literal
 
 from joblib import Parallel, delayed
@@ -25,6 +26,25 @@ def expand_dicts(df: pd.DataFrame) -> pd.DataFrame:
             except:
                 pass
     return df
+
+
+def get_best_params(res_file: str):
+    """Get the best parameters from a results file
+    res_file: str
+        Path to the results file
+    
+    Returns
+    -------
+    prep_param: dict
+        Best preprocessing parameters
+    model_param: dict
+        Best model parameters
+    """
+    df = pd.read_csv(res_file)
+    for obj_col in ['prep_param', 'model_param']:
+        df[obj_col] = df[obj_col].apply(lambda x: ast.literal_eval(x))
+    df.sort_values(by=['f1_macro'], inplace=True, ascending=False)
+    return df.iloc[0]['prep_param'], df.iloc[0]['model_param']
 
 
 def downsampling(
