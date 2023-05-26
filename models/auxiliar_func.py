@@ -4,6 +4,8 @@ import itertools
 import time
 from typing import Literal
 
+from joblib import Parallel, delayed
+
 from imblearn.under_sampling import RandomUnderSampler, NearMiss, TomekLinks, EditedNearestNeighbours, OneSidedSelection
 
 from sklearn.cluster import KMeans
@@ -163,7 +165,8 @@ def cross_validation(
     par_te: dict | None = None,
     target: str = 'income_50k',
     cv: int = 4,
-    mean_score: bool = True
+    mean_score: bool = True,
+    n_jobs: int = -1
 ) -> dict:
     """Cross validation of a model. It returns the mean of the metrics of the cross validation.
     model: object
@@ -189,9 +192,8 @@ def cross_validation(
     scores = {}
     for score in ['accuracy', 'f1_macro', 'precision_macro', 'recall_macro']:
         scores[score] = []
-
-    kf = KFold(n_splits=cv, shuffle=True, random_state=42)
-    for train_index, test_index in kf.split(df_tr):
+    
+    def cv_fold(train_index, test_index):
         df_tr_fold = df_tr.iloc[train_index]
         df_te_fold = df_tr.iloc[test_index]
 
@@ -210,6 +212,10 @@ def cross_validation(
         scores['f1_macro'].append(f1_score(y_te, y_pred, average='macro'))
         scores['precision_macro'].append(precision_score(y_te, y_pred, average='macro'))
         scores['recall_macro'].append(recall_score(y_te, y_pred, average='macro'))
+
+    kf = KFold(n_splits=cv, shuffle=True, random_state=42)
+    
+    Parallel(n_jobs=n_jobs)(delayed(cv_fold)(train_index, test_index) for train_index, test_index in kf.split(df_tr))
 
     if mean_score:
         for score in scores.keys():
