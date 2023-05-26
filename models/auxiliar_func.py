@@ -189,33 +189,36 @@ def cross_validation(
         if par_te['imputation'] == 'dropna':
             par_te['imputation'] = 'mode'
 
-    scores = {}
-    for score in ['accuracy', 'f1_macro', 'precision_macro', 'recall_macro']:
-        scores[score] = []
+    scores = {'accuracy': [], 'f1_macro': [], 'precision_macro': [], 'recall_macro': []}
     
-    def cv_fold(train_index, test_index):
+    def cv_fold(train_index, test_index, df_tr):
+
         df_tr_fold = df_tr.iloc[train_index]
         df_te_fold = df_tr.iloc[test_index]
 
         df_tr_fold = preprocessing(df_tr_fold, **par_tr)
         df_te_fold = preprocessing(df_te_fold, **par_te)
-        df_tr_fold, df_te_fold = df_tr_fold.align(
-            df_te_fold, join='left', axis=1, fill_value=0)
+        df_tr_fold, df_te_fold = df_tr_fold.align(df_te_fold, join='left', axis=1, fill_value=0)
 
         X_tr, y_tr = df_tr_fold.drop(target, axis=1), df_tr_fold[target]
         X_te, y_te = df_te_fold.drop(target, axis=1), df_te_fold[target]
 
+        print(X_tr.shape, y_tr.shape)
         model.fit(X_tr, y_tr)
         y_pred = model.predict(X_te)
 
-        scores['accuracy'].append(accuracy_score(y_te, y_pred))
-        scores['f1_macro'].append(f1_score(y_te, y_pred, average='macro'))
-        scores['precision_macro'].append(precision_score(y_te, y_pred, average='macro'))
-        scores['recall_macro'].append(recall_score(y_te, y_pred, average='macro'))
+        scr = {}
+        scr['accuracy'] = accuracy_score(y_te, y_pred)
+        scr['f1_macro'] = f1_score(y_te, y_pred, average='macro')
+        scr['precision_macro'] = precision_score(y_te, y_pred, average='macro')
+        scr['recall_macro'] = recall_score(y_te, y_pred, average='macro')
 
-    kf = KFold(n_splits=cv, shuffle=True, random_state=42)
-    
-    Parallel(n_jobs=n_jobs)(delayed(cv_fold)(train_index, test_index) for train_index, test_index in kf.split(df_tr))
+        return scr
+
+    kf = KFold(n_splits=cv, shuffle=True, random_state=42)    
+    scores = Parallel(n_jobs=n_jobs)(delayed(cv_fold)(train_index, test_index, df_tr) for train_index, test_index in kf.split(df_tr))
+
+    scores = {k: [d[k] for d in scores] for k in scores[0]}
 
     if mean_score:
         for score in scores.keys():
