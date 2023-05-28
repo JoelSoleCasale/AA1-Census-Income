@@ -27,6 +27,21 @@ def expand_dicts(df: pd.DataFrame) -> pd.DataFrame:
                 pass
     return df
 
+def read_results(res_file: str):
+    """Read the results of a model and preprocessing parameters search
+    res_file: str
+        Path to the results file
+    
+    Returns
+    -------
+    df: pd.DataFrame
+        Dataframe with the results
+    """
+    df = pd.read_csv(res_file)
+    for obj_col in ['prep_param', 'model_param']:
+        df[obj_col] = df[obj_col].apply(lambda x: ast.literal_eval(x))
+    return df
+
 
 def get_best_params(res_file: str):
     """Get the best parameters from a results file
@@ -40,9 +55,7 @@ def get_best_params(res_file: str):
     model_param: dict
         Best model parameters
     """
-    df = pd.read_csv(res_file)
-    for obj_col in ['prep_param', 'model_param']:
-        df[obj_col] = df[obj_col].apply(lambda x: ast.literal_eval(x))
+    df = read_results(res_file)
     df.sort_values(by=['f1_macro'], inplace=True, ascending=False)
     return df.iloc[0]['prep_param'], df.iloc[0]['model_param']
 
@@ -265,7 +278,7 @@ def test_preprocess_params(
     c_names = ['prep_param','accuracy','f1_macro','precision_macro','recall_macro','tex']
     results = pd.DataFrame(columns=c_names, dtype=object)
 
-    if type(prep_grid) != list:
+    if not isinstance(prep_grid, list):
         aux = list(itertools.product(*prep_grid.values()))
         prep_grid = [{k: v for k, v in zip(prep_grid.keys(), combination)} for combination in aux]
     for i, par_tr in enumerate(prep_grid):
@@ -297,7 +310,7 @@ def test_model_params(
     c_names = ['model_param','accuracy','f1_macro','precision_macro','recall_macro','tex']
     results = pd.DataFrame(columns=c_names, dtype=object)
 
-    if type(mod_grid) != list:
+    if not isinstance(mod_grid, list):
         aux = list(itertools.product(*mod_grid.values()))
         mod_grid = [{k: v for k, v in zip(mod_grid.keys(), combination)} for combination in aux]
     for i, par_model in enumerate(mod_grid):
@@ -333,7 +346,7 @@ def search_best_combination(
     N: int = 10,
     verbose: int = 2,
     max_iter: int = 10,
-    ignore_errors: bool = True
+    ignore_errors: bool = True,
 ) -> pd.DataFrame:
 
     best_mod_param = [{k: v[0] for k, v in model_params_grid.items()}]
@@ -352,9 +365,9 @@ def search_best_combination(
         computed = pd.DataFrame(columns=results.columns)
         if isinstance(mod_par, dict) or isinstance(prep_par, dict):
             return mod_par, prep_par, computed
+        
         for m_par, p_par in zip(mod_par, prep_par):
-            row = results[(results['prep_param'] == p_par) &
-                          (results['model_param'] == m_par)]
+            row = results[(results['prep_param'] == p_par) & (results['model_param'] == m_par)]
             if row.empty:
                 nc_prep_par.append(p_par)
                 nc_mod_par.append(m_par)
@@ -407,11 +420,9 @@ def search_best_combination(
 
         # update the parameter grid without duplicates
         results['temp1'] = results['prep_param'].astype(str)
-        prep_params_grid = results.drop_duplicates(subset='temp1').drop(
-            'temp1', axis=1)['prep_param'][:N].tolist()
+        prep_params_grid = results.drop_duplicates(subset='temp1').drop('temp1', axis=1)['prep_param'][:N].tolist()
         results['temp2'] = results['model_param'].astype(str)
-        model_params_grid = results.drop_duplicates(subset='temp2').drop(
-            'temp2', axis=1)['model_param'][:N].tolist()
+        model_params_grid = results.drop_duplicates(subset='temp2').drop('temp2', axis=1)['model_param'][:N].tolist()
 
         results = results.drop(['temp1', 'temp2'], axis=1)
 
