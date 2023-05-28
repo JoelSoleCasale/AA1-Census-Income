@@ -250,7 +250,7 @@ def cross_validation(
     Returns
     -------
     scores: dict
-        Dictionary with the scores
+        Dictionary with the scores: accuracy, f1_macro, precision_macro, recall_macro
     y_pred: np.ndarray
         Predictions
     y_true: np.ndarray
