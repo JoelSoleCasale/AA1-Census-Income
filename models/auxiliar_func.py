@@ -17,7 +17,15 @@ from sklearn.metrics import accuracy_score, confusion_matrix, classification_rep
 
 def expand_dicts(df: pd.DataFrame) -> pd.DataFrame:
     '''Expands all the columns that are dictionaries with
-    a new column for each key in the dictionary'''
+    a new column for each key in the dictionary
+    df: pd.DataFrame
+        Dataframe to expand
+
+    Returns
+    -------
+    df: pd.DataFrame
+        Dataframe with the expanded columns
+    '''
     df = df.copy()
     for col in df.columns:
         if df[col].dtype == 'object':
@@ -35,7 +43,7 @@ def read_results(res_file: str):
     Returns
     -------
     df: pd.DataFrame
-        Dataframe with the results
+        Dataframe with the results of the search
     """
     df = pd.read_csv(res_file)
     for obj_col in ['prep_param', 'model_param']:
@@ -69,18 +77,20 @@ def downsampling(
     target: str = 'income_50k',
     target_freq: float = 0.7,
 ) -> pd.DataFrame:
-    """Downsampling of the majority class in a dataset. The downsampling is done in clusters or randomly.
+    """Downsampling of the majority class in a dataset. It uses the RandomUnderSampler or the NearMiss algorithm.
     data: pd.DataFrame
         Dataset to downsample
     method: str
-        Method used to downsample.
-        It can be 'random' or 'NearMiss'
-    version: int
-        Version of the NearMiss algorithm to use (default: 1)
+        Method to use for downsampling. It can be "random" or "NearMiss"
     target: str
-        Name of the target column to balance (default: 'income_50k')
+        Name of the target column
     target_freq: float
-        Frequency of apparition of the majority class to downsample
+        Frequency of the target class after downsampling
+
+    Returns
+    -------
+    resampled_data: pd.DataFrame
+        Resampled dataset
     """
     X = data.drop(target, axis=1)
     y = data[target]
@@ -118,17 +128,34 @@ def preprocessing(
     ] = 'random',
     target_freq: float | None = None
 ) -> pd.DataFrame:
-    """Preprocessing of the dataset. It removes the unknown values, the columns with more than 40% of missing values,
-    imputes the missing values with the mode or the KNN algorithm, converts the categorical variables to numerical
-    and scales the numerical variables.
+    """Preprocessing of the dataset. It removes the unknown column, converts the categorical columns to the categorical type,
+    imputes the missing values, scales the numerical columns, generates the dummies for the categorical columns and downsamples
+    the majority class.
     data: pd.DataFrame
         Dataset to preprocess
     imputation: str
-        Type of imputation. It can be "mode" or "knn"
+        Method to use for imputation. It can be "mode" or "knn"
     remove_duplicates: bool
-        If True, it removes the duplicates
+        Whether to remove duplicates or not
     scaling: str
-        Type of scaling. It can be "minmax" or "standard" or None
+        Method to use for scaling. It can be "minmax" or "standard"
+    cat_age: bool
+        Whether to convert the age column to categorical or not
+    merge_capital: bool
+        Whether to merge the capital_gains and capital_losses columns into a single column or not
+    generate_dummies: bool
+        Whether to generate the dummies for the categorical columns or not
+    target: str
+        Name of the target column
+    downsampling_method: str
+        Method to use for downsampling. It can be "random" or "NearMiss"
+    target_freq: float
+        Frequency of the target class after downsampling
+
+    Returns
+    -------
+    df: pd.DataFrame
+        Preprocessed dataset
     """
     df = data.copy()
     df = df.drop('unknown', axis=1)
@@ -201,18 +228,35 @@ def cross_validation(
     mean_score: bool = True,
     n_jobs: int = -1,
     return_predict: bool = False
-) -> dict:
-    """Cross validation of a model. It returns the mean of the metrics of the cross validation.
+) -> dict | tuple[dict, np.ndarray, np.ndarray]:
+    """Cross validation of a model. It preprocesses the data, fits the model and returns the scores.
     model: object
-        Model to cross validate
+        Model to fit
     df_tr: pd.DataFrame
         Training dataset
     par_tr: dict
-        Parameters to preprocess the training dataset
+        Parameters for the preprocessing
     par_te: dict
-        Parameters to preprocess the test dataset
+        Parameters for the preprocessing of the test set
+    target: str
+        Name of the target column
     cv: int
         Number of folds for the cross validation
+    mean_score: bool
+        Whether to return the mean of the scores or not
+    n_jobs: int
+        Number of jobs to run in parallel
+    return_predict: bool
+        Whether to return the predictions or not
+
+    Returns
+    -------
+    scores: dict
+        Dictionary with the scores
+    y_pred: np.ndarray
+        Predictions
+    y_true: np.ndarray
+        True values
     """
     t1 = time.time()
     model = clone(model)  # to reset the model
@@ -256,7 +300,7 @@ def cross_validation(
     if return_predict:
         y_te = [x[1] for x in rescv]
         y_pr = [x[2] for x in rescv]
-        y_te = pd.concat(y_te, ignore_index=True)
+        y_te = np.concatenate(y_te, axis=0)
         y_pr = np.concatenate(y_pr, axis=0)
 
     scores = {k: [d[k] for d in scores] for k in scores[0]}
@@ -275,6 +319,25 @@ def test_preprocess_params(
     verbose: int = 1,
     ignore_errors: bool = False
 ) -> pd.DataFrame:
+    """Test different preprocessing parameters for a model.
+    model: object
+        Model to fit
+    prep_grid: dict
+        Dictionary with the parameters to test
+    df: pd.DataFrame
+        Training dataset
+    cv: int
+        Number of folds for the cross validation
+    verbose: int
+        Verbosity level
+    ignore_errors: bool
+        Whether to ignore errors or not
+
+    Returns
+    -------
+    results: pd.DataFrame
+        Dataframe with the resulting scores
+    """
     c_names = ['prep_param','accuracy','f1_macro','precision_macro','recall_macro','tex']
     results = pd.DataFrame(columns=c_names, dtype=object)
 
@@ -307,6 +370,29 @@ def test_model_params(
     verbose: int = 1,
     ignore_errors: bool = False
 ) -> pd.DataFrame:
+    """Test different model parameters for a model.
+    model: object
+        Model to fit
+    mod_grid: dict | list
+        Dictionary with the parameters to test
+    df: pd.DataFrame
+        Training dataset
+    par_tr: dict
+        Dictionary with the preprocessing parameters
+    par_te: dict | None
+        Dictionary with the preprocessing parameters for the test set
+    cv: int
+        Number of folds for the cross validation
+    verbose: int
+        Verbosity level
+    ignore_errors: bool
+        Whether to ignore errors or not
+
+    Returns
+    -------
+    results: pd.DataFrame
+        Dataframe with the resulting scores
+    """
     c_names = ['model_param','accuracy','f1_macro','precision_macro','recall_macro','tex']
     results = pd.DataFrame(columns=c_names, dtype=object)
 
@@ -327,13 +413,6 @@ def test_model_params(
     if verbose == 0: print()
     return results
 
-# tests the best preprocessing combination with a model
-# keep the best 5 preprocessing combinations
-# with the best preprocessing combination, find the best model parameters
-# keep the best 5 model parameters
-# repeat the last two steps searching over the best 5 preprocessing combinations and 5 model parameters until no improvement is found
-# return a dataframe with all the trained models and their metrics sorted by the target metric
-
 
 def search_best_combination(
     model: object,
@@ -348,6 +427,33 @@ def search_best_combination(
     max_iter: int = 10,
     ignore_errors: bool = True,
 ) -> pd.DataFrame:
+    """Search the best combination of preprocessing and model parameters.
+    model: object
+        Model to fit
+    model_params_grid: dict
+        Dictionary with the model parameters to test
+    prep_params_grid: dict
+        Dictionary with the preprocessing parameters to test
+    df: pd.DataFrame
+        Training dataset
+    target_metric: Literal['accuracy', 'f1_macro', 'precision_macro', 'recall_macro']
+        Metric to optimize
+    cv: int
+        Number of folds for the cross validation
+    N: int
+        Number of best combinations to keep
+    verbose: int
+        Verbosity level
+    max_iter: int
+        Maximum number of iterations
+    ignore_errors: bool
+        Whether to ignore errors or not
+
+    Returns
+    -------
+    results: pd.DataFrame
+        Dataframe with the resulting scores
+    """
 
     best_mod_param = [{k: v[0] for k, v in model_params_grid.items()}]
     best_prep_param = []
