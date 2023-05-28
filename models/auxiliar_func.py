@@ -178,9 +178,7 @@ def preprocessing(
     #############################################
 
     ########## MISSING VALUES ##########
-    # Get columns with missing values
     cols_with_missing = df.columns[df.isnull().any()]
-    # Drop columns with more than 40% of missing values
     df = df.drop(cols_with_missing[df[cols_with_missing].isnull().mean() > 0.4], axis=1)
 
     cols_with_missing = df.columns[df.isnull().any()]
@@ -199,11 +197,9 @@ def preprocessing(
     ########## SCALING ##########
     num_col = df.select_dtypes(include=['int64', 'float64']).columns
     if scaling == 'minmax':
-        df[num_col] = (df[num_col] - df[num_col].min()) / \
-            (df[num_col].max() - df[num_col].min())
+        df[num_col] = (df[num_col] - df[num_col].min()) / (df[num_col].max() - df[num_col].min())
     elif scaling == 'standard':
-        df[num_col] = (df[num_col] - df[num_col].mean()) / \
-            df[num_col].std()
+        df[num_col] = (df[num_col] - df[num_col].mean()) / df[num_col].std()
     ############################
 
     df['income_50k'] = np.where(df['income_50k'] == ' - 50000.', 0, 1)
@@ -212,8 +208,7 @@ def preprocessing(
         df = pd.get_dummies(df)
 
     if target_freq is not None and target_freq < 1:
-        df = downsampling(df, method=downsampling_method,
-                          target=target, target_freq=target_freq)
+        df = downsampling(df, method=downsampling_method, target=target, target_freq=target_freq)
 
     return df
 
@@ -227,7 +222,8 @@ def cross_validation(
     cv: int = 4,
     mean_score: bool = True,
     n_jobs: int = -1,
-    return_predict: bool = False
+    return_predict: bool = False,
+    random_state: int  = 42
 ) -> dict | tuple[dict, np.ndarray, np.ndarray]:
     """Cross validation of a model. It preprocesses the data, fits the model and returns the scores.
     model: object
@@ -248,6 +244,8 @@ def cross_validation(
         Number of jobs to run in parallel
     return_predict: bool
         Whether to return the predictions or not
+    random_state: int
+        Random state for the cross validation
 
     Returns
     -------
@@ -293,7 +291,7 @@ def cross_validation(
 
         return scr, y_te, y_pred
 
-    kf = KFold(n_splits=cv, shuffle=True, random_state=42)    
+    kf = KFold(n_splits=cv, shuffle=True, random_state=random_state)    
     rescv = Parallel(n_jobs=n_jobs)(delayed(cv_fold)(train_index, test_index, df_tr) for train_index, test_index in kf.split(df_tr))
 
     scores = [x[0] for x in rescv]
@@ -317,7 +315,8 @@ def test_preprocess_params(
     df: pd.DataFrame,
     cv: int = 4,
     verbose: int = 1,
-    ignore_errors: bool = False
+    ignore_errors: bool = False,
+    random_state: int = 42
 ) -> pd.DataFrame:
     """Test different preprocessing parameters for a model.
     model: object
@@ -332,6 +331,8 @@ def test_preprocess_params(
         Verbosity level
     ignore_errors: bool
         Whether to ignore errors or not
+    random_state: int
+        Random state for the cross validation
 
     Returns
     -------
@@ -344,18 +345,21 @@ def test_preprocess_params(
     if not isinstance(prep_grid, list):
         aux = list(itertools.product(*prep_grid.values()))
         prep_grid = [{k: v for k, v in zip(prep_grid.keys(), combination)} for combination in aux]
+    
     for i, par_tr in enumerate(prep_grid):
         if verbose == 0: print(f"it: {i+1}/{len(prep_grid)}", end='\r')
         if verbose > 0: print(f"it {i}: Adjusting for {list(par_tr.values())}")
+
         try:
             par_tr['remove_duplicates'] = True
 
-            cross_val_results = cross_validation(model, df, par_tr, cv=cv)
+            cross_val_results = cross_validation(model, df, par_tr, cv=cv, mean_score=True, random_state=random_state)
             results = pd.concat([results, pd.DataFrame({'prep_param': [par_tr]} | cross_val_results)])
         except Exception as e:
             if verbose > 0: print(f"Error in {par_tr}")
             if verbose > 1: print(e)
             if not ignore_errors: raise e
+
     if verbose == 0: print()
     return results
 
@@ -368,7 +372,8 @@ def test_model_params(
     par_te: dict | None = None,
     cv: int = 4,
     verbose: int = 1,
-    ignore_errors: bool = False
+    ignore_errors: bool = False,
+    random_state: int = 42
 ) -> pd.DataFrame:
     """Test different model parameters for a model.
     model: object
@@ -387,6 +392,8 @@ def test_model_params(
         Verbosity level
     ignore_errors: bool
         Whether to ignore errors or not
+    random_state: int
+        Random state for the cross validation
 
     Returns
     -------
@@ -404,7 +411,7 @@ def test_model_params(
         if verbose > 0: print(f"Adjusting for {list(par_model.values())}")
         try:
             model.set_params(**par_model)
-            cross_val_results = cross_validation(model, df, par_tr, par_te, cv=cv)
+            cross_val_results = cross_validation(model, df, par_tr, par_te, cv=cv, mean_score=True, random_state=random_state)
             results = pd.concat([results, pd.DataFrame({'model_param': [par_model]} | cross_val_results)])
         except Exception as e:
             if verbose > 0: print(f"Error in {par_model}")
@@ -426,6 +433,7 @@ def search_best_combination(
     verbose: int = 2,
     max_iter: int = 10,
     ignore_errors: bool = True,
+    random_state: int = 42
 ) -> pd.DataFrame:
     """Search the best combination of preprocessing and model parameters.
     model: object
@@ -486,27 +494,25 @@ def search_best_combination(
         nonlocal best_prep_param, results
         model.set_params(**mod_param)
         _, prep_par_list, computed = split_computed([mod_param]*len(prep_par_list), prep_par_list)
-        prep_par = test_preprocess_params(
-            model, prep_par_list, df, cv=cv, verbose=verbose-2, ignore_errors=ignore_errors)
-        prep_par = prep_par.sort_values(
-            by=target_metric, ascending=False).reset_index(drop=True)
+        prep_par = test_preprocess_params(model, prep_par_list, df, cv=cv,
+                                          verbose=verbose-2, ignore_errors=ignore_errors,
+                                          random_state=random_state)
+        prep_par = prep_par.sort_values(by=target_metric, ascending=False).reset_index(drop=True)
         prep_par['model_param'] = pd.Series([mod_param]*len(prep_par))
         results = pd.concat([results, prep_par])
-        best_prep_param = pd.concat([prep_par, computed])[
-            'prep_param'][:N].tolist()
+        best_prep_param = pd.concat([prep_par, computed])['prep_param'][:N].tolist()
 
     def update_mod_params(prep_param: dict, mod_par_list: list):
         '''searches the best model parameters for a given preprocessing parameters'''''
         nonlocal best_mod_param, results
         mod_par_list, _, computed = split_computed(mod_par_list, [prep_param]*len(mod_par_list))
-        mod_par = test_model_params(model, mod_par_list, df, prep_param,
-                                    cv=cv, verbose=verbose - 2, ignore_errors=ignore_errors)
-        mod_par = mod_par.sort_values(
-            by=target_metric, ascending=False).reset_index(drop=True)
+        mod_par = test_model_params(model, mod_par_list, df, prep_param, cv=cv,
+                                    verbose=verbose - 2, ignore_errors=ignore_errors,
+                                    random_state=random_state)
+        mod_par = mod_par.sort_values(by=target_metric, ascending=False).reset_index(drop=True)
         mod_par['prep_param'] = pd.Series([prep_param]*len(mod_par))
         results = pd.concat([results, mod_par])
-        best_mod_param = pd.concat([mod_par, computed])[
-            'model_param'][:N].tolist()
+        best_mod_param = pd.concat([mod_par, computed])['model_param'][:N].tolist()
 
     best_metric = 0
     for i in range(1, max_iter+1):
