@@ -463,8 +463,8 @@ def search_best_combination(
         Dataframe with the resulting scores
     """
 
-    best_mod_param = [{k: v[0] for k, v in model_params_grid.items()}]
-    best_prep_param = []
+    best_mod_param = [{k: v[0] for k, v in model_params_grid.items()}] # list of N best parameters dictionaries
+    best_prep_param = []  # list of N best preprocessing dictionaries                                    
 
     results = pd.DataFrame(columns=['prep_param', 'model_param', 'accuracy',
                             'f1_macro', 'precision_macro', 'recall_macro', 'tex'],
