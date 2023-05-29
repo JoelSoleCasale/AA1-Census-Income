@@ -500,7 +500,8 @@ def search_best_combination(
         prep_par = prep_par.sort_values(by=target_metric, ascending=False).reset_index(drop=True)
         prep_par['model_param'] = pd.Series([mod_param]*len(prep_par))
         results = pd.concat([results, prep_par])
-        best_prep_param = pd.concat([prep_par, computed])['prep_param'][:N].tolist()
+        prep_par = pd.concat([prep_par, computed]).sort_values(by=target_metric, ascending=False).reset_index(drop=True)
+        best_prep_param = prep_par['prep_param'][:N].tolist()
 
     def update_mod_params(prep_param: dict, mod_par_list: list):
         '''searches the best model parameters for a given preprocessing parameters'''''
@@ -512,7 +513,8 @@ def search_best_combination(
         mod_par = mod_par.sort_values(by=target_metric, ascending=False).reset_index(drop=True)
         mod_par['prep_param'] = pd.Series([prep_param]*len(mod_par))
         results = pd.concat([results, mod_par])
-        best_mod_param = pd.concat([mod_par, computed])['model_param'][:N].tolist()
+        mod_par = pd.concat([mod_par, computed]).sort_values(by=target_metric, ascending=False).reset_index(drop=True)
+        best_mod_param = mod_par['model_param'][:N].tolist()
 
     best_metric = 0
     for i in range(1, max_iter+1):
