@@ -4,7 +4,22 @@ import matplotlib.pyplot as plt
 import seaborn as sns
 from sklearn.metrics import confusion_matrix
 
-def pieplot(df, col='income_50k', labels = ['<=50K', '>50K'], save = None):
+def pieplot(
+    df: pd.DataFrame,
+    col: str = 'income_50k',
+    labels: list = ['<=50K', '>50K'],
+    save: str = None
+):
+    """ Plot a pieplot for the given column.
+    df: dataframe
+        Dataset to plot.
+    col: str
+        Column to plot.
+    labels: list
+        Labels for the pieplot.
+    save: str
+        Path to save the plot. If None, the plot is not saved.
+    """
     df[col].value_counts().plot(kind='pie', autopct='%1.1f%%', figsize=(5,5), labels=['', ''])
     # keep the original labels
     plt.legend(labels=labels)
@@ -13,9 +28,27 @@ def pieplot(df, col='income_50k', labels = ['<=50K', '>50K'], save = None):
         plt.savefig(save)
     plt.show()
 
-def pieplots(df, cols, grid=(None, 5), figsize=(20, 10), savename=None, other_freq=0.05):
-    """
-    Plot pieplots for the given columns in a grid of 4 columns.
+def pieplots(
+    df: pd.DataFrame,
+    cols: list,
+    grid: tuple = (None, 5),
+    figsize: tuple = (20, 10),
+    save: str = None,
+    other_freq: float = 0.05
+):
+    """ Plot pieplots for the given columns in a grid of 4 columns.
+    df: dataframe
+        Dataset to plot.
+    cols: list
+        Columns to plot.
+    grid: tuple
+        Grid size for the subplots.
+    figsize: tuple
+        Figure size.
+    save: str
+        Path to save the plot. If None, the plot is not saved.
+    other_freq: float
+        Frequency threshold for the 'other' category.
     """
     if grid[0] is None:
         grid = (int(np.ceil(len(cols) / grid[1])), grid[1])
@@ -35,13 +68,32 @@ def pieplots(df, cols, grid=(None, 5), figsize=(20, 10), savename=None, other_fr
         fig.delaxes(ax.flatten()[i])
 
     # save the figure
-    if savename:
-        plt.savefig(savename, bbox_inches='tight')
+    if save:
+        plt.savefig(save, bbox_inches='tight')
     plt.show()
 
-def barplots(df, cols, grid=(None, 5), figsize=(20, 10), savename=None, other_freq=0.05):
-    """
-    Plot barplots for the given columns in a grid of 4 columns.
+
+def barplots(
+    df: pd.DataFrame,
+    cols: list,
+    grid: tuple = (None, 5),
+    figsize: tuple = (20, 10),
+    save: str = None,
+    other_freq: float = 0.05
+):
+    """ Plot barplots for the given columns in a grid of 4 columns.
+    df: dataframe
+        Dataset to plot.
+    cols: list
+        Columns to plot.
+    grid: tuple
+        Grid size for the subplots.
+    figsize: tuple
+        Figure size.
+    save: str
+        Path to save the plot. If None, the plot is not saved.
+    other_freq: float
+        Frequency threshold for the 'other' category.
     """
     if grid[0] is None:
         grid = (int(np.ceil(len(cols) / grid[1])), grid[1])
@@ -62,20 +114,36 @@ def barplots(df, cols, grid=(None, 5), figsize=(20, 10), savename=None, other_fr
         fig.delaxes(ax.flatten()[i])
 
     # save the figure
-    if savename:
-        plt.savefig(savename, bbox_inches='tight')
+    if save:
+        plt.savefig(save, bbox_inches='tight')
     plt.show()
 
-def plot_conf_matrix(y_test, y_pred, savename=None, normalize='true'):
-    # change axis names from 0 and 1 to <=50K and >50K
+# def plot_conf_matrix(y_test, y_pred, savename=None, normalize='true'):
+def plot_conf_matrix(
+    y_test: np.ndarray,
+    y_pred: np.ndarray,
+    save: str = None,
+    show: bool = True,
+    normalize: str = 'true'
+):
+    """ Plot the confusion matrix.
+    y_test: np.ndarray
+        Test labels.
+    y_pred: np.ndarray
+        Predicted labels.
+    savename: str
+        Path to save the plot. If None, the plot is not saved.
+    normalize: str
+        Normalization mode for the confusion matrix.
+    """
     cm = confusion_matrix(y_test, y_pred, normalize=normalize)
-    cm = pd.DataFrame(cm, index=['<=50K', '>50K'], columns=['<=50K', '>50K'])
+    cm = pd.DataFrame(cm, index=['≤50K', '>50K'], columns=['≤50K', '>50K'])
     plt.figure(figsize=(5, 5))
     sns.heatmap(cm, annot=True, fmt='.2f', cmap='Blues')
-    plt.title('Confusion matrix')
-    plt.ylabel('Actual')
     plt.xlabel('Predicted')
+    plt.ylabel('Actual')
 
-    if savename:
-        plt.savefig(savename, bbox_inches='tight')
-    plt.show()
+    if save:
+        plt.savefig(save, bbox_inches='tight')
+    if show:
+        plt.show()
