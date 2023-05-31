@@ -159,8 +159,6 @@ def preprocessing(
     """
     df = data.copy()
     df = df.drop('unknown', axis=1)
-    if remove_duplicates:
-        df = df.drop_duplicates()
 
     ########## CATEGORICAL CONVERSION ##########
     for col in ['det_ind_code', 'det_occ_code', 'own_or_self', 'vet_benefits', 'year']:
@@ -203,6 +201,9 @@ def preprocessing(
     ############################
 
     df['income_50k'] = np.where(df['income_50k'] == ' - 50000.', 0, 1)
+
+    if remove_duplicates:
+        df = df.drop_duplicates()
 
     if generate_dummies:
         df = pd.get_dummies(df)
