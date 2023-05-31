@@ -147,3 +147,5 @@ def plot_conf_matrix(
         plt.savefig(save, bbox_inches='tight')
     if show:
         plt.show()
+    else:
+        plt.close()
