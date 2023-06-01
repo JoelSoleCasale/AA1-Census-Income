@@ -464,8 +464,16 @@ def search_best_combination(
         Dataframe with the resulting scores
     """
 
-    best_mod_param = [{k: v[0] for k, v in model_params_grid.items()}] # list of N best parameters dictionaries
-    best_prep_param = []  # list of N best preprocessing dictionaries                                    
+    best_mod_param = [] # list of N best parameters dictionaries
+    best_prep_param = []  # list of N best preprocessing dictionaries
+
+    # initialize best_mod_param with the first combination
+    if isinstance(model_params_grid, list):
+        best_mod_param.append(model_params_grid[0])
+    elif isinstance(model_params_grid, dict):
+        best_mod_param.append({k: v[0] for k, v in model_params_grid.items()})
+    else:
+        raise ValueError("model_params_grid must be a list or a dictionary")                            
 
     results = pd.DataFrame(columns=['prep_param', 'model_param', 'accuracy',
                             'f1_macro', 'precision_macro', 'recall_macro', 'tex'],
