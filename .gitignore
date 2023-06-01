@@ -1,3 +1,4 @@
 figures/*
+figures_preprocessing/*
 __pycache__
 catboost_info

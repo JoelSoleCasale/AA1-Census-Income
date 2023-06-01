@@ -27,6 +27,7 @@ def pieplot(
     if save:
         plt.savefig(save)
     plt.show()
+    
 
 def pieplots(
     df: pd.DataFrame,
@@ -104,10 +105,19 @@ def barplots(
         counts = counts[counts > other_freq]
         if 1 - counts.sum() > 0:
             counts['other'] = 1 - counts.sum()
-        counts.plot.bar(ax=subplot)
+        # change the color palette
+        counts.plot.bar(ax=subplot, color=sns.color_palette('Blues', len(counts)))
+
+        for item in subplot.get_xticklabels():
+            item.set_rotation(0)
+
+        subplot.set_title(variable)
+
+        # change the color of the 'other' category
+        if 'other' in counts.index:
+            subplot.patches[-1].set_facecolor('grey')
         subplot.set_ylabel('')
-        for label in subplot.get_xticklabels():
-            label.set_rotation(0)
+
 
     # remove unused graphs
     for i in range(len(cols), grid[0]*grid[1]):
