@@ -25,7 +25,32 @@ def pieplot(
     plt.legend(labels=labels)
     plt.ylabel('')
     if save:
-        plt.savefig(save)
+        plt.savefig(save, bbox_inches='tight')
+    plt.show()
+
+
+def barplot(
+    df: pd.DataFrame,
+    col: str = 'income_50k',
+    labels: list = ['≤50K', '>50K'],
+    save: str = None
+):
+    """ Plot a barplot for the given column.
+    df: dataframe
+        Dataset to plot.
+    col: str
+        Column to plot.
+    labels: list
+        Labels for the barplot.
+    save: str
+        Path to save the plot. If None, the plot is not saved.
+    """
+    sns.barplot(x=df[col].value_counts(normalize=True).index, y=df[col].value_counts(normalize=True)*100, palette='Blues_d')
+    # keep the original labels
+    plt.xticks([0, 1], labels)
+    plt.ylabel('Frequency (%)')
+    if save:
+        plt.savefig(save, bbox_inches='tight')
     plt.show()
     
 

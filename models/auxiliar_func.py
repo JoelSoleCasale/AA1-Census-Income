@@ -127,6 +127,7 @@ def preprocessing(
     ] | None = 'minmax',
     cat_age: bool = True,
     merge_capital: bool = True,
+    remove_outliers: bool = False,
     generate_dummies: bool = True,
     target: str = 'income_50k',
     downsampling_method: Literal[
