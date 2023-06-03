@@ -154,6 +154,8 @@ def preprocessing(
         Whether to convert the age column to categorical or not
     merge_capital: bool
         Whether to merge the capital_gains and capital_losses columns into a single column or not
+    remove_outliers: bool
+        Whether to remove outliers or not
     generate_dummies: bool
         Whether to generate the dummies for the categorical columns or not
     target: str
