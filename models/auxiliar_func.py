@@ -115,16 +115,23 @@ def downsampling(
 
 def preprocessing(
     data: pd.DataFrame,
-    imputation: str = "mode",
+    imputation: Literal[
+        'mode',
+        'dropna',
+        'nacat',
+    ] = 'mode',
     remove_duplicates: bool = True,
-    scaling: str = None,
+    scaling: Literal[
+        'minmax',
+        'standard',
+    ] | None = 'minmax',
     cat_age: bool = True,
     merge_capital: bool = True,
     generate_dummies: bool = True,
     target: str = 'income_50k',
     downsampling_method: Literal[
         'random',
-        'NearMiss'
+        'NearMiss',
     ] = 'random',
     target_freq: float | None = None
 ) -> pd.DataFrame:
@@ -134,11 +141,14 @@ def preprocessing(
     data: pd.DataFrame
         Dataset to preprocess
     imputation: str
-        Method to use for imputation. It can be "mode" or "knn"
+        Method to use for imputation. It can be "mode", "dropna" or "nacat"
+        "mode": Imputes the missing values with the mode of the column
+        "dropna": Drops the rows with missing values
+        "nacat": Imputes the missing values with the string "Missing"
     remove_duplicates: bool
         Whether to remove duplicates or not
     scaling: str
-        Method to use for scaling. It can be "minmax" or "standard"
+        Method to use for scaling. It can be "minmax", "standard" or None
     cat_age: bool
         Whether to convert the age column to categorical or not
     merge_capital: bool
@@ -208,7 +218,7 @@ def preprocessing(
     if generate_dummies:
         df = pd.get_dummies(df)
 
-    if target_freq is not None and target_freq < 1:
+    if downsampling_method is not None and target_freq is not None and target_freq < 1:
         df = downsampling(df, method=downsampling_method, target=target, target_freq=target_freq)
 
     return df
