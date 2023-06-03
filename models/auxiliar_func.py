@@ -278,9 +278,11 @@ def cross_validation(
     """
     t1 = time.time()
     model = clone(model)  # to reset the model
-    if par_te is None:
+    if par_te is None: # if par_te is not given, it is the same as par_tr except for the methods that modify the data shape
         par_te = par_tr.copy()
         par_te['remove_duplicates'] = False
+        par_te['remove_outliers'] = False
+        par_te['downsampling_method'] = None
         par_te['target_freq'] = None
         if par_te['imputation'] == 'dropna':
             par_te['imputation'] = 'mode'
