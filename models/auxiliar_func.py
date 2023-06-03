@@ -192,7 +192,7 @@ def preprocessing(
 
     ########## OUTLIERS ##########
     if remove_outliers:
-        df = df[(df['capital_gains'] != 99999) | (df['wage_per_hour'] != 9999) & (df['stock_dividends'] != 99999)]
+        df = df[(df['capital_gains'] != 99999) & (df['wage_per_hour'] != 9999) & (df['stock_dividends'] != 99999)]
 
     ########## CATEGORICAL CONVERSION ##########
     for col in ['det_ind_code', 'det_occ_code', 'own_or_self', 'vet_benefits', 'year']:
