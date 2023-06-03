@@ -171,21 +171,6 @@ def preprocessing(
     df = data.copy()
     df = df.drop('unknown', axis=1)
 
-    ########## CATEGORICAL CONVERSION ##########
-    for col in ['det_ind_code', 'det_occ_code', 'own_or_self', 'vet_benefits', 'year']:
-        df[col] = df[col].astype('category')  # Change to categorical type
-    if cat_age:
-        age_bins = [0, 18, 25, 35, 45, 55, 65, 75, 85, 95, 105]
-        df['age'] = pd.cut(df['age'], bins=age_bins,
-                           labels=age_bins[:-1], include_lowest=True).astype('category')
-    if merge_capital:
-        df['capital_balance'] = df['capital_gains'] - df['capital_losses']
-        df = df.drop(['capital_gains', 'capital_losses'], axis=1)
-
-    for col in df.select_dtypes(include=['object']).columns:
-        df[col] = df[col].astype('category')
-    #############################################
-
     ########## MISSING VALUES ##########
     cols_with_missing = df.columns[df.isnull().any()]
     df = df.drop(cols_with_missing[df[cols_with_missing].isnull().mean() > 0.4], axis=1)
@@ -202,6 +187,27 @@ def preprocessing(
             df[col] = df[col].fillna("Missing")
 
     ###################################
+
+    ########## OUTLIERS ##########
+    if remove_outliers:
+        df = df[(df['capital_gains'] != 99999) & (df['wage_per_hour'] != 9999) & (df['stock_dividends'] != 99999)]
+
+    ########## CATEGORICAL CONVERSION ##########
+    for col in ['det_ind_code', 'det_occ_code', 'own_or_self', 'vet_benefits', 'year']:
+        df[col] = df[col].astype('category')  # Change to categorical type
+    if cat_age:
+        age_bins = [0, 18, 25, 35, 45, 55, 65, 75, 85, 95, 105]
+        df['age'] = pd.cut(df['age'], bins=age_bins,
+                           labels=age_bins[:-1], include_lowest=True).astype('category')
+    for col in df.select_dtypes(include=['object']).columns:
+        df[col] = df[col].astype('category')
+    #############################################
+
+    ########## FEATURE EXTRACTION ##########
+    if merge_capital:
+        df['capital_balance'] = df['capital_gains'] - df['capital_losses']
+        df = df.drop(['capital_gains', 'capital_losses'], axis=1)
+    #########################################
 
     ########## SCALING ##########
     num_col = df.select_dtypes(include=['int64', 'float64']).columns
