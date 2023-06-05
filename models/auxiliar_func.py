@@ -76,6 +76,7 @@ def downsampling(
     ] = 'random',
     target: str = 'income_50k',
     target_freq: float = 0.7,
+    random_state: int = 42,
 ) -> pd.DataFrame:
     """Downsampling of the majority class in a dataset. It uses the RandomUnderSampler or the NearMiss algorithm.
     data: pd.DataFrame
@@ -99,9 +100,9 @@ def downsampling(
         0: min(int(target_freq/(1-target_freq) * len(y[y == 1])), len(y[y == 0])),
         1: len(y[y == 1])}
     if method == 'random':
-        sampler = RandomUnderSampler(sampling_strategy=samples_per_class)
+        sampler = RandomUnderSampler(sampling_strategy=samples_per_class, random_state=random_state)
     elif method == 'NearMiss':
-        sampler = NearMiss(sampling_strategy=samples_per_class)
+        sampler = NearMiss(sampling_strategy=samples_per_class, random_state=random_state)
     else:
         raise ValueError(f"Unknown method: {method}")
 
@@ -134,7 +135,8 @@ def preprocessing(
         'random',
         'NearMiss',
     ] = 'random',
-    target_freq: float | None = None
+    target_freq: float | None = None,
+    random_state: int = 42,
 ) -> pd.DataFrame:
     """Preprocessing of the dataset. It removes the unknown column, converts the categorical columns to the categorical type,
     imputes the missing values, scales the numerical columns, generates the dummies for the categorical columns and downsamples
@@ -164,6 +166,8 @@ def preprocessing(
         Method to use for downsampling. It can be "random" or "NearMiss"
     target_freq: float
         Frequency of the target class after downsampling
+    random_state: int
+        Random state for reproducibility
 
     Returns
     -------
@@ -228,7 +232,7 @@ def preprocessing(
         df = pd.get_dummies(df)
 
     if downsampling_method is not None and target_freq is not None and target_freq < 1:
-        df = downsampling(df, method=downsampling_method, target=target, target_freq=target_freq)
+        df = downsampling(df, method=downsampling_method, target=target, target_freq=target_freq, random_state=random_state)
 
     return df
 
@@ -294,8 +298,8 @@ def cross_validation(
         df_tr_fold = df_tr.iloc[train_index]
         df_te_fold = df_tr.iloc[test_index]
 
-        df_tr_fold = preprocessing(df_tr_fold, **par_tr)
-        df_te_fold = preprocessing(df_te_fold, **par_te)
+        df_tr_fold = preprocessing(df_tr_fold, **par_tr, random_state=random_state)
+        df_te_fold = preprocessing(df_te_fold, **par_te, random_state=random_state)
         df_tr_fold, df_te_fold = df_tr_fold.align(df_te_fold, join='left', axis=1, fill_value=0)
 
         X_tr, y_tr = df_tr_fold.drop(target, axis=1), df_tr_fold[target]
