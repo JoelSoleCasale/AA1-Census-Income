@@ -174,7 +174,7 @@ def plot_conf_matrix(
     cm = confusion_matrix(y_test, y_pred, normalize=normalize)
     cm = pd.DataFrame(cm, index=['≤50K', '>50K'], columns=['≤50K', '>50K'])
     plt.figure(figsize=(5, 5))
-    sns.heatmap(cm, annot=True, fmt='.2f', cmap='Blues')
+    sns.heatmap(cm, annot=True, fmt='.2f', cmap='Blues', cbar=False)
     plt.xlabel('Predicted')
     plt.ylabel('Actual')
 
