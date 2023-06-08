@@ -10,16 +10,18 @@
 
 3. Execute the "preprocessing.ipynb" file. This file includes code for data visualization and preprocessing techniques.
 
-4. Execute the "parameter_tuning.ipynb" file. This file performs resampling, hyperparameter selection (including preprocessing hyperparameters), and may take a significant amount of time to complete (approximately > 12 hours). Note that the execution results are stored in the "results" folder, so there is no need to run it again.
+4. Execute the "model_assumptions.ipynb" file. This file includes various checks and validations of the assumptions made by certain models in our dataset. 
 
-5. Run the "best_model_indo.ipynb" file. This file uses the best results from each model (located in the "results" folder) and performs cross-validation with 20 folds to obtain generalization errors. It generates confusion matrices and metric results. This execution takes around 30 minutes, and the results are saved in the "results" folder as "cv20_results.csv".
+5. Execute the "parameter_tuning.ipynb" file. This file performs resampling, hyperparameter selection (including preprocessing hyperparameters), and may take a significant amount of time to complete (approximately > 12 hours). Note that the execution results are stored in the "results" folder, so there is no need to run it again.
 
-6. Execute the "results_analysis.ipynb" file. This file collects information from the "best_model" results and creates various plots based on the extracted information.
+6. Run the "best_model_indo.ipynb" file. This file uses the best results from each model (located in the "results" folder) and performs cross-validation with 20 folds to obtain generalization errors. It generates confusion matrices and metric results. This execution takes around 30 minutes, and the results are saved in the "results" folder as "cv20_results.csv".
 
-7. Run the "random_forest.ipynb" file. This file adjusts the random forest model on the training data using optimal algorithms. It also extracts useful information such as variable importance and correlation of variables. Please note that the plot for permutation-based importance may take some time.
+7. Execute the "results_analysis.ipynb" file. This file collects information from the "best_model" results and creates various plots based on the extracted information.
 
-8. Execute the "catboost.ipynb" file. This file adjusts the selected best model and measures its performance and prediction capability on the test data (note: test data is only used at this stage). It also displays plots for variable importance. 
+8. Run the "random_forest.ipynb" file. This file adjusts the random forest model on the training data using optimal algorithms. It also extracts useful information such as variable importance and correlation of variables. Please note that the plot for permutation-based importance may take some time.
 
-9. The "auxiliar_func" file contains various functions used during model fitting, preprocessing, cross-validation iterations, and more. Feel free to explore this file.
+9. Execute the "catboost.ipynb" file. This file adjusts the selected best model and measures its performance and prediction capability on the test data (note: test data is only used at this stage). It also displays plots for variable importance. 
+
+10. The "auxiliar_func" file contains various functions used during model fitting, preprocessing, cross-validation iterations, and more. Feel free to explore this file.
 
 10. The "plot_func.py" file contains functions related to plots and figures.
