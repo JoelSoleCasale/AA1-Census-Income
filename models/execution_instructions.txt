@@ -1,0 +1,21 @@
+#############################################################
+## Instructions to execute the code and obtain the results ##
+#############################################################
+
+0. Download the project.zip, inside you should see a .pdf file which is the main report
+and a folder named code which contains all the code used in the project. Get inside the 
+code folder.
+
+1. Install the packages used with: 
+    
+    $pip install -r requirements.txt
+
+2. Execute the file "preprocessing.ipynb", this file contains all the code related with
+data visualization and prepreocessing methodology. 
+
+3. Execute the file "parameter_tuning.ipynb", this file contains all the resampling and
+selection of hyperparameters (also preprocessing hyperparameters). !The execution will 
+take a lot of time to complete, it may vary but > 12 hours.! Note that the results of this 
+execution are in results folder, no need to execute again. 
+
+4. Best model info tarfa 30m los resutlados ya estan guarados 
